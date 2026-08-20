@@ -4,6 +4,12 @@ litellm.drop_params = True
 litellm.num_retries = 3
 
 try:
+    import crewai.llms.cache as _crewai_cache
+    _crewai_cache.mark_cache_breakpoint = lambda msg: msg
+except ImportError:
+    pass
+
+try:
     from crewai import Agent, Task, Crew, Process, LLM
     from app.tools.analyze_skills_tool import analyze_student_skills
     from app.tools.generate_skill_gap_tool import generate_skill_gap

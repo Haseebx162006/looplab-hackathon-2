@@ -2,6 +2,12 @@ import litellm
 litellm.drop_params = True
 litellm.num_retries = 3
 
+try:
+    import crewai.llms.cache as _crewai_cache
+    _crewai_cache.mark_cache_breakpoint = lambda msg: msg
+except ImportError:
+    pass
+
 import logging
 import uvicorn
 from fastapi import FastAPI

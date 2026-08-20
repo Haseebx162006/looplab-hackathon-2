@@ -81,7 +81,7 @@ export const Footer: React.FC = () => {
           className="w-full flex justify-center items-center"
         >
           <h1 className="text-[13vw] font-black tracking-[-0.08em] text-slate-950 text-center leading-[0.72] uppercase font-mono w-full drop-shadow-sm scale-y-110">
-            LEARN AI
+            SEEKH
           </h1>
         </motion.div>
       </div>

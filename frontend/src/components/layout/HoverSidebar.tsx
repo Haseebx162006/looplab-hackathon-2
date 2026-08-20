@@ -20,6 +20,7 @@ import {
   Users,
   Calendar,
   Mail,
+  GraduationCap
 } from "lucide-react";
 import { useCompany } from "@/context/CompanyContext";
 
@@ -34,46 +35,27 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   {
     id: "dashboard",
-    label: "Executive Dashboard",
+    label: "Student Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
-    id: "workflows",
-    label: "Sales Workflows",
-    href: "/workflows",
-    icon: Workflow,
+    id: "roadmaps",
+    label: "AI Roadmaps",
+    href: "/roadmaps",
+    icon: Sparkles,
+    badge: "RAG",
+  },
+  {
+    id: "assessments",
+    label: "Skill Diagnostics",
+    href: "/assessments",
+    icon: Target,
     badge: "LIVE",
   },
   {
-    id: "leads",
-    label: "Lead Intelligence",
-    href: "/leads",
-    icon: Users,
-    badge: "NEW",
-  },
-  {
-    id: "meetings",
-    label: "Demos & Meetings",
-    href: "/meetings",
-    icon: Calendar,
-    badge: "AUTO",
-  },
-  {
-    id: "emails",
-    label: "Outreach & Inbox",
-    href: "/emails",
-    icon: Mail,
-  },
-  {
-    id: "campaigns",
-    label: "Campaign Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-  },
-  {
     id: "settings",
-    label: "Settings",
+    label: "Account Settings",
     href: "/settings",
     icon: Settings,
   },
@@ -103,8 +85,8 @@ export const HoverSidebar: React.FC = () => {
       {/* Top Section: Logo & Brand */}
       <div className="space-y-6">
         <Link href="/" className="flex items-center gap-3 px-2 py-1.5 overflow-hidden group">
-          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-xs group-hover:bg-purple-600 transition-colors">
-            <img src="/logo.png" alt="HUNTR Logo" className="w-6 h-6 object-contain" />
+          <div className="w-10 h-10 rounded-xl bg-purple-900 border border-purple-700/50 flex items-center justify-center shrink-0 shadow-xs group-hover:bg-purple-600 transition-colors">
+            <GraduationCap className="w-5 h-5 text-white" />
           </div>
 
           <AnimatePresence>
@@ -117,10 +99,10 @@ export const HoverSidebar: React.FC = () => {
                 className="whitespace-nowrap overflow-hidden"
               >
                 <div className="font-extrabold text-sm tracking-wider font-mono text-white">
-                  HUNTR AI
+                  SEEKH AI
                 </div>
                 <div className="text-[10px] font-mono text-purple-300">
-                  Sales Intelligence
+                  Adaptive Learning
                 </div>
               </motion.div>
             )}
@@ -179,11 +161,11 @@ export const HoverSidebar: React.FC = () => {
               className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl space-y-1.5 text-xs font-mono"
             >
               <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span>Vector Memory</span>
-                <span className="text-emerald-400 font-bold">100%</span>
+                <span>Roadmap Progress</span>
+                <span className="text-emerald-400 font-bold">65%</span>
               </div>
               <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full w-full" />
+                <div className="h-full bg-emerald-500 rounded-full w-[65%]" />
               </div>
             </motion.div>
           )}
@@ -208,8 +190,8 @@ export const HoverSidebar: React.FC = () => {
                 className="whitespace-nowrap overflow-hidden pr-2 flex items-center justify-between w-full"
               >
                 <div>
-                  <div className="text-xs font-bold text-white truncate">Hassan AI</div>
-                  <div className="text-[10px] font-mono text-slate-400 truncate">Admin / Settings</div>
+                  <div className="text-xs font-bold text-white truncate">Hassan Ali</div>
+                  <div className="text-[10px] font-mono text-slate-400 truncate">Student Profile</div>
                 </div>
                 <button
                   onClick={(e) => {

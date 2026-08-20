@@ -19,8 +19,8 @@ export const Navbar: React.FC = () => {
   const [isOnboardingDone, setIsOnboardingDone] = useState(false);
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("agenthack_auth_token") : null;
-    const done = hasCompletedOnboarding || (typeof window !== "undefined" && localStorage.getItem("agenthack_onboarding_completed") === "true");
+    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
+    const done = hasCompletedOnboarding || (typeof window !== "undefined" && localStorage.getItem("seekh_onboarding_completed") === "true");
     setIsLoggedIn(isAuthenticated || Boolean(token));
     setIsOnboardingDone(Boolean(done));
   }, [isAuthenticated, hasCompletedOnboarding]);

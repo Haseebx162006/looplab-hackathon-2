@@ -6,6 +6,7 @@ export interface StaggeredMenuItem {
   label: string;
   ariaLabel: string;
   link: string;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export interface StaggeredMenuSocialItem {
@@ -364,11 +365,16 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
     }
   }, [playClose, animateIcon, animateColor, animateText, onMenuClose]);
 
-  const handleLinkClick = (e: React.MouseEvent, link: string) => {
-    if (link.startsWith('#')) {
+  const handleLinkClick = (e: React.MouseEvent, item: StaggeredMenuItem) => {
+    if (item.onClick) {
+      item.onClick(e);
+      closeMenu();
+      return;
+    }
+    if (item.link.startsWith('#')) {
       e.preventDefault();
       closeMenu();
-      const el = document.querySelector(link);
+      const el = document.querySelector(item.link);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth' });
       }
@@ -460,7 +466,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                     href={it.link}
                     aria-label={it.ariaLabel}
                     data-index={idx + 1}
-                    onClick={(e) => handleLinkClick(e, it.link)}
+                    onClick={(e) => handleLinkClick(e, it)}
                   >
                     <span className="sm-panel-itemLabel">{it.label}</span>
                   </a>

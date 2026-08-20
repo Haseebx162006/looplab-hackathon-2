@@ -21,9 +21,9 @@ export const OnboardingGuard: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (!mounted) return;
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("agenthack_auth_token") : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
     const isUserAuth = isAuthenticated || Boolean(token);
-    const isOnboardingDone = hasCompletedOnboarding || (typeof window !== "undefined" && localStorage.getItem("agenthack_onboarding_completed") === "true");
+    const isOnboardingDone = hasCompletedOnboarding || (typeof window !== "undefined" && localStorage.getItem("seekh_onboarding_completed") === "true");
 
     // 1. Logged in user visiting login or signup -> Redirect to dashboard (or onboarding if incomplete)
     if (isUserAuth && (pathname === "/login" || pathname === "/signup")) {

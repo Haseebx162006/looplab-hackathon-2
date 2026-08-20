@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CompanyProvider } from "@/context/CompanyContext";
 import { LenisProvider } from "@/components/providers/LenisProvider";
+import { ReduxProvider } from "@/components/providers/ReduxProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HUNTR AI — Autonomous Sales Intelligence Platform",
-  description: "AI-powered sales engine for automated lead ingestion, enrichment, outreach, and demo scheduling.",
+  title: "SEEKH AI — Personalized Learning Platform",
+  description: "AI-powered personalized learning platform with skill assessments, custom roadmaps, and human mentor feedback loops.",
 };
 
 export default function RootLayout({
@@ -30,9 +31,11 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#F5F2FA]">
-        <CompanyProvider>
-          <LenisProvider>{children}</LenisProvider>
-        </CompanyProvider>
+        <ReduxProvider>
+          <CompanyProvider>
+            <LenisProvider>{children}</LenisProvider>
+          </CompanyProvider>
+        </ReduxProvider>
       </body>
     </html>
   );

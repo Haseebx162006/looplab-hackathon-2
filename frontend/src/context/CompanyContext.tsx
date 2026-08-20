@@ -24,8 +24,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("agenthack_auth_token");
-      const onboarding = localStorage.getItem("agenthack_onboarding_completed");
+      const token = localStorage.getItem("seekh_auth_token");
+      const onboarding = localStorage.getItem("seekh_onboarding_completed");
       setIsAuthenticated(Boolean(token));
       setHasCompletedOnboarding(onboarding === "true");
     }
@@ -33,8 +33,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const logout = () => {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("agenthack_auth_token");
-      localStorage.removeItem("agenthack_onboarding_completed");
+      localStorage.removeItem("seekh_auth_token");
+      localStorage.removeItem("seekh_onboarding_completed");
     }
     setIsAuthenticated(false);
     setHasCompletedOnboarding(false);

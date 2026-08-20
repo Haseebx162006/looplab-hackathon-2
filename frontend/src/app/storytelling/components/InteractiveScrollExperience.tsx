@@ -11,6 +11,9 @@ import { StatsSection } from "@/app/stats/components/StatsSection";
 import { Footer } from "@/app/components/Footer";
 import StaggeredMenu from "@/app/hero/components/StaggeredMenu";
 
+import { useCompany } from "@/context/CompanyContext";
+import { useRouter } from "next/navigation";
+
 const baseMenuItems = [
   { label: "Home", ariaLabel: "Go to home page", link: "#hero-section-root" },
   { label: "Working", ariaLabel: "Go to how it works section", link: "#how-it-works" },
@@ -25,14 +28,13 @@ const socialItems = [
 
 const ScrollMenuWrapper: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { isAuthenticated, logout } = useCompany();
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
       setShowMenu(window.scrollY > 300);
     };
-    const token = typeof window !== "undefined" ? localStorage.getItem("agenthack_auth_token") : null;
-    setIsLoggedIn(Boolean(token));
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
@@ -40,9 +42,39 @@ const ScrollMenuWrapper: React.FC = () => {
 
   const items = [
     ...baseMenuItems,
-    isLoggedIn
-      ? { label: "Dashboard", ariaLabel: "Go to executive dashboard", link: "/dashboard" }
-      : { label: "Login", ariaLabel: "Go to login page", link: "/login" },
+    isAuthenticated
+      ? {
+          label: "Dashboard",
+          ariaLabel: "Go to dashboard",
+          link: "/dashboard",
+          onClick: (e: React.MouseEvent) => {
+            e.preventDefault();
+            router.push("/dashboard");
+          }
+        }
+      : {
+          label: "Login",
+          ariaLabel: "Go to login page",
+          link: "/login",
+          onClick: (e: React.MouseEvent) => {
+            e.preventDefault();
+            router.push("/login");
+          }
+        },
+    ...(isAuthenticated
+      ? [
+          {
+            label: "Logout",
+            ariaLabel: "Log out of account",
+            link: "#logout",
+            onClick: (e: React.MouseEvent) => {
+              e.preventDefault();
+              logout();
+              router.push("/login");
+            }
+          }
+        ]
+      : [])
   ];
 
   return (

@@ -362,6 +362,12 @@ export const sqlMigrations = [
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cv_url TEXT;
     `,
   },
+  {
+    name: '011_add_cv_text_to_profiles',
+    sql: `
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cv_text TEXT;
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool) {

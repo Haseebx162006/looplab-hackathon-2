@@ -1,6 +1,7 @@
 import json
 import litellm
 litellm.drop_params = True
+litellm.num_retries = 3
 
 try:
     from crewai import Agent, Task, Crew, Process, LLM

@@ -1,5 +1,6 @@
 import litellm
 litellm.drop_params = True
+litellm.num_retries = 3
 
 import logging
 import uvicorn

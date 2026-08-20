@@ -75,115 +75,255 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 18;
   const colW = pageW - margin * 2;
-  let y = 22;
+  let y = 26;
 
-  const addLine = (text: string, size = 10, bold = false, color: [number, number, number] = [30, 30, 30]) => {
+  // Reusable helper to add paragraphs with auto page wrapping and indentation support
+  const addParagraph = (
+    text: string,
+    size = 9.5,
+    bold = false,
+    color: [number, number, number] = [60, 60, 60],
+    width = colW,
+    startX = margin
+  ) => {
     doc.setFontSize(size);
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.setTextColor(...color);
-    const lines = doc.splitTextToSize(text || "—", colW);
+    const lines = doc.splitTextToSize(text || "—", width);
     lines.forEach((line: string) => {
-      if (y > 272) { doc.addPage(); y = 22; }
-      doc.text(line, margin, y);
-      y += Math.max(5, size * 0.5);
+      if (y > 270) {
+        doc.addPage();
+        y = 26;
+      }
+      doc.text(line, startX, y);
+      y += (size * 0.45); // line spacing
     });
-    y += 1.5;
+    y += 2; // bottom margin
   };
 
-  const addSection = (title: string) => {
+  // Reusable section header builder
+  const addSectionHeader = (title: string, barColor: [number, number, number] = [88, 28, 135]) => {
     y += 4;
-    if (y > 265) { doc.addPage(); y = 22; }
-    doc.setFillColor(245, 240, 255);
-    doc.roundedRect(margin - 2, y - 5, colW + 4, 10, 2, 2, "F");
-    addLine(title, 11, true, [88, 28, 135]);
+    if (y > 260) {
+      doc.addPage();
+      y = 26;
+    }
+
+    // Draw a small vertical colored indicator bar
+    doc.setFillColor(...barColor);
+    doc.rect(margin, y - 4, 3, 5.5, "F");
+
+    // Title text
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 30, 30);
+    doc.text(title, margin + 5, y);
+
+    // Separator line
+    doc.setDrawColor(235, 230, 245);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y + 2, margin + colW, y + 2);
+
+    y += 7;
+  };
+
+  // Reusable styled bullet points builder
+  const addBulletPoints = (
+    items: string[] = [],
+    textColor: [number, number, number] = [70, 70, 70],
+    bulletColor: [number, number, number] = [88, 28, 135]
+  ) => {
+    (items || []).forEach((item) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 26;
+      }
+      // Bullet dot
+      doc.setFillColor(...bulletColor);
+      doc.circle(margin + 2, y - 1, 0.8, "F");
+
+      // Indented text
+      addParagraph(item, 9, false, textColor, colW - 6, margin + 5);
+    });
     y += 1;
   };
 
-  const addBullets = (items: string[] = [], color: [number, number, number] = [50, 50, 50]) => {
-    (items || []).forEach((item) => {
-      addLine(`• ${item}`, 10, false, color);
-    });
+  // Reusable tag list
+  const addTagsList = (tags: string[], tagColor: [number, number, number] = [88, 28, 135]) => {
+    if (!tags || tags.length === 0) {
+      addParagraph("None identified.", 9, false, [120, 120, 120]);
+      return;
+    }
+    const joined = tags.join("   •   ");
+    addParagraph(joined, 9.5, false, tagColor);
   };
 
-  // Header
-  doc.setFillColor(88, 28, 135);
-  doc.rect(0, 0, pageW, 18, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.text("SEEKH AI — CV Analysis Report", margin, 12);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), pageW - margin - 30, 12);
-  y = 28;
+  // --- 1. Candidate Info Card Dashboard ---
+  const cardH = 62;
+  doc.setFillColor(250, 248, 254);
+  doc.setDrawColor(233, 224, 248);
+  doc.roundedRect(margin, y, colW, cardH, 4, 4, "FD");
 
-  // Candidate + Score
-  addLine(report.candidate_name || "Candidate", 16, true, [30, 30, 30]);
-  addLine(
-    `${report.experience_level}${report.target_role ? `  ·  Target: ${report.target_role}` : ""}`,
-    10,
-    false,
-    [100, 100, 100]
-  );
-  addLine(
-    `CV Score: ${report.overall_score} / 100`,
-    12,
-    true,
-    report.overall_score >= 80 ? [5, 150, 105] : report.overall_score >= 60 ? [180, 120, 20] : [220, 38, 38]
-  );
+  // Candidate Name
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(30, 30, 30);
+  doc.text(report.candidate_name || "Candidate", margin + 6, y + 10);
+
+  // Target role & experience
+  doc.setFontSize(9.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  const roleText = `${report.experience_level}${report.target_role ? `  |  Target: ${report.target_role}` : ""}`;
+  doc.text(roleText, margin + 6, y + 15);
+
+  // Short candidate summary inside card
+  doc.setFontSize(8.5);
+  doc.setTextColor(80, 80, 80);
+  const summaryW = colW - 54;
+  const summaryLines = doc.splitTextToSize(report.summary || "", summaryW);
+  let summaryY = y + 21;
+  summaryLines.slice(0, 5).forEach((line: string) => {
+    doc.text(line, margin + 6, summaryY);
+    summaryY += 4;
+  });
+
+  // Circular overall score visualization
+  const scoreX = margin + colW - 22;
+  const scoreY = y + 18;
+
+  // Outer circle
+  doc.setFillColor(243, 232, 255);
+  doc.circle(scoreX, scoreY, 13, "F");
+
+  // Inner circle
+  doc.setFillColor(88, 28, 135);
+  doc.circle(scoreX, scoreY, 11, "F");
+
+  // Score value
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
+  const scoreStr = String(report.overall_score);
+  const textWidth = doc.getTextWidth(scoreStr);
+  doc.text(scoreStr, scoreX - (textWidth / 2), scoreY + 2);
+
+  // Score label
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(88, 28, 135);
+  const labelWidth = doc.getTextWidth("OVERALL SCORE");
+  doc.text("OVERALL SCORE", scoreX - (labelWidth / 2), scoreY + 18);
+
+  // Score breakdown progress bars
   if (report.score_breakdown) {
     const b = report.score_breakdown;
-    addLine(
-      `Breakdown — Content ${b.content}/25 · Impact ${b.impact}/25 · Structure ${b.structure}/25 · ATS ${b.ats}/25`,
-      9,
-      false,
-      [90, 90, 90]
-    );
+    const breakdownItems = [
+      { label: "CONTENT", val: b.content },
+      { label: "IMPACT", val: b.impact },
+      { label: "STRUCTURE", val: b.structure },
+      { label: "ATS FIT", val: b.ats }
+    ];
+
+    const blockW = colW / 4;
+    breakdownItems.forEach((item, idx) => {
+      const startX = margin + idx * blockW + 6;
+      const startY = y + 49;
+
+      // label
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(120, 120, 120);
+      doc.text(item.label, startX, startY);
+
+      // value
+      doc.setFontSize(8.5);
+      doc.setTextColor(50, 50, 50);
+      doc.text(`${item.val}/25`, startX, startY + 4);
+
+      // progress track
+      const barW = blockW - 12;
+      const barY = startY + 6;
+      doc.setFillColor(230, 232, 240);
+      doc.rect(startX, barY, barW, 2, "F");
+
+      // progress fill
+      if (item.val > 0) {
+        doc.setFillColor(139, 92, 246);
+        const fillW = (Math.min(25, item.val) / 25) * barW;
+        doc.rect(startX, barY, fillW, 2, "F");
+      }
+    });
   }
-  y += 2;
 
-  // Summary
-  addSection("Professional Summary");
-  addLine(report.summary);
+  y += cardH + 8;
 
-  // Skills
-  addSection("Skills Identified");
-  addLine((report.skills_found || []).join(" · ") || "—", 10, false, [88, 28, 135]);
+  // --- 2. Sections ---
+  // Skills Identified
+  addSectionHeader("Skills Identified", [88, 28, 135]);
+  addTagsList(report.skills_found, [88, 28, 135]);
 
   // Strengths
-  addSection("Strengths");
-  addBullets(report.strengths, [5, 120, 80]);
+  addSectionHeader("Key Strengths", [16, 185, 129]);
+  addBulletPoints(report.strengths, [70, 70, 70], [16, 185, 129]);
 
-  // Weaknesses
-  addSection("Areas for Improvement");
-  addBullets(report.weaknesses, [180, 80, 20]);
+  // Areas to Improve
+  addSectionHeader("Areas for Improvement", [245, 158, 11]);
+  addBulletPoints(report.weaknesses, [70, 70, 70], [245, 158, 11]);
 
   // Recommendations
-  addSection("Recommendations");
-  addBullets(report.recommendations, [30, 30, 30]);
+  addSectionHeader("Actionable Recommendations", [59, 130, 246]);
+  addBulletPoints(report.recommendations, [70, 70, 70], [59, 130, 246]);
 
   // Suitable Roles
-  addSection("Suitable Roles");
-  addLine((report.suitable_roles || []).join(" · ") || "—", 10, false, [30, 90, 180]);
+  addSectionHeader("Suitable Roles", [79, 70, 229]);
+  addTagsList(report.suitable_roles, [79, 70, 229]);
 
+  // Missing Sections
   if (report.missing_sections && report.missing_sections.length > 0) {
-    addSection("Missing Sections");
-    addBullets(report.missing_sections, [180, 80, 20]);
+    addSectionHeader("Missing CV Sections", [239, 68, 68]);
+    addTagsList(report.missing_sections, [239, 68, 68]);
   }
 
+  // ATS Tips
   if (report.ats_tips && report.ats_tips.length > 0) {
-    addSection("ATS Tips");
-    addBullets(report.ats_tips, [30, 30, 30]);
+    addSectionHeader("ATS Strategy Tips", [71, 85, 105]);
+    addBulletPoints(report.ats_tips, [70, 70, 70], [71, 85, 105]);
   }
 
-  // Footer
+  // --- 3. Dynamic Header & Footer Pass ---
   const pages = (doc.internal as any).getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
+
+    // Deep purple top banner
+    doc.setFillColor(88, 28, 135);
+    doc.rect(0, 0, pageW, 16, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("SEEKH AI  |  CV ANALYSIS REPORT", margin, 10.5);
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    const dateStr = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    const dateW = doc.getTextWidth(dateStr);
+    doc.text(dateStr, pageW - margin - dateW, 10.5);
+
+    // Light divider line above footer
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(margin, 284, pageW - margin, 284);
+
+    // Footer text
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Generated by SEEKH AI · Page ${i} of ${pages}`, margin, 290);
+    doc.text(`Generated by SEEKH AI`, margin, 289);
+
+    const pageStr = `Page ${i} of ${pages}`;
+    const pageWStr = doc.getTextWidth(pageStr);
+    doc.text(pageStr, pageW - margin - pageWStr, 289);
   }
 
   doc.save(`CV_Report_${(report.candidate_name || "candidate").replace(/\s+/g, "_")}.pdf`);

@@ -20,19 +20,10 @@ except ImportError:
     HAS_CREWAI = False
 
 if HAS_CREWAI:
-    # Initialize CrewAI LLM pointing to Groq
-    llm = LLM(
-        model="groq/llama-3.3-70b-versatile",
-        api_key=settings.GROQ_API_KEY,
-        max_retries=5,
-        max_tokens=8192,
-        drop_params=True,
-        additional_drop_params=["cache_breakpoint"],
-        fallbacks=[
-            "groq/llama-3.1-70b-versatile",
-            "groq/llama-3.1-8b-instant"
-        ]
-    )
+    from app.config.llm import get_llm_client
+    
+    # Initialize fallback-aware LLM client
+    llm = get_llm_client()
 
     # Define agent
     career_planner = Agent(

@@ -32,19 +32,16 @@ def run_test_generation(module: str, difficulty: str) -> str:
     Do not add any explanations or markdown formatting outside of the JSON object.
     """
     
+    models = settings.groq_models_list
+    primary_model = models[0] if models else "groq/openai/gpt-oss-120b"
+    fallback_models = models[1:] if len(models) > 1 else []
+    
     response = litellm.completion(
-        model="groq/llama-3.3-70b-versatile",
+        model=primary_model,
         messages=[{"role": "user", "content": prompt}],
         api_key=settings.GROQ_API_KEY,
         response_format={"type": "json_object"},
-        fallbacks=[
-            "groq/openai/gpt-oss-120b",
-            "groq/openai/gpt-oss-20b",
-            "groq/llama-3.1-8b-instant",
-            "groq/qwen/qwen3.6-27b",
-            "groq/groq/compound",
-            "groq/groq/compound-mini"
-        ]
+        fallbacks=fallback_models
     )
     return response.choices[0].message.content or "{}"
 

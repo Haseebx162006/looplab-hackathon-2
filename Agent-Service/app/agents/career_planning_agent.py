@@ -19,6 +19,36 @@ try:
 except ImportError:
     HAS_CREWAI = False
 
+def trim_payloads(student_profile_str: str, assessment_results_str: str) -> tuple[str, str]:
+    """
+    Utility to trim student profile and assessment results to keep prompts compact
+    and avoid exceeding Groq's strict TPM limits.
+    """
+    try:
+        profile = json.loads(student_profile_str)
+        trimmed_profile = {
+            "experience_level": profile.get("experience_level", "Beginner"),
+            "background": str(profile.get("background", ""))[:150],  # Truncate background
+            "interests": profile.get("interests", [])[:5]           # Limit to 5 interests
+        }
+        profile_out = json.dumps(trimmed_profile)
+    except Exception:
+        profile_out = student_profile_str[:400]
+
+    try:
+        results = json.loads(assessment_results_str)
+        trimmed_results = []
+        for r in results:
+            trimmed_results.append({
+                "question": str(r.get("question", ""))[:100],  # Shorten question
+                "answer": str(r.get("answer", ""))[:100]       # Shorten student answer
+            })
+        results_out = json.dumps(trimmed_results)
+    except Exception:
+        results_out = assessment_results_str[:400]
+
+    return profile_out, results_out
+
 if HAS_CREWAI:
     def run_skill_analysis_crew(student_profile_str: str, assessment_results_str: str) -> str:
         """
@@ -26,6 +56,9 @@ if HAS_CREWAI:
         Returns a combined JSON string containing: skill_levels, strengths, weaknesses, missing_skills.
         """
         from app.config.llm import run_crew_with_fallback
+        
+        # Trim payloads before dumping into task descriptions to optimize prompt size (Issue 3)
+        profile_trimmed, results_trimmed = trim_payloads(student_profile_str, assessment_results_str)
         
         def create_crew(llm_client) -> Crew:
             career_planner = Agent(
@@ -40,8 +73,8 @@ if HAS_CREWAI:
                 description=f"""
                 Analyze the student's profile and assessment results to determine current skill levels.
                 Use the 'Analyze Student Skills' tool with the inputs:
-                student_profile: {student_profile_str}
-                assessment_results: {assessment_results_str}
+                student_profile: {profile_trimmed}
+                assessment_results: {results_trimmed}
                 
                 Output only the JSON mapping of skills to levels.
                 """,
@@ -83,6 +116,9 @@ if HAS_CREWAI:
         """
         from app.config.llm import run_crew_with_fallback
         
+        # Trim payloads before dumping into task descriptions to optimize prompt size (Issue 3)
+        profile_trimmed, results_trimmed = trim_payloads(student_profile_str, assessment_results_str)
+        
         def create_crew(llm_client) -> Crew:
             career_planner = Agent(
                 role="Career Planning Specialist",
@@ -96,8 +132,8 @@ if HAS_CREWAI:
                 description=f"""
                 Analyze the student's profile and assessment results to determine current skill levels.
                 Use the 'Analyze Student Skills' tool with the inputs:
-                student_profile: {student_profile_str}
-                assessment_results: {assessment_results_str}
+                student_profile: {profile_trimmed}
+                assessment_results: {results_trimmed}
                 
                 Output only the JSON mapping of skills to levels.
                 """,

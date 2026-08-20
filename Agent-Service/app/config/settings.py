@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
     PORT: int = 8000
     HOST: str = "0.0.0.0"
-    NODE_ENV: str = "development"
+    NODE_ENV: str = "production"
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),

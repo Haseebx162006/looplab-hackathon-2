@@ -1,4 +1,5 @@
 import { pool } from '../../db/index.js';
+import { GoogleCalendarService } from './google-calendar.service.js';
 
 export class AdminReviewService {
   static async reviewSubmission(adminId: string, submissionId: string, decision: 'approve' | 'reject', comment: string) {
@@ -141,5 +142,49 @@ export class AdminReviewService {
        ORDER BY s.created_at ASC`
     );
     return res.rows;
+  }
+
+  static async getAllUsers() {
+    const res = await pool.query(
+      `SELECT u.id, u.name, u.email, u.role, u.is_verified, u.is_blocked, u.created_at,
+              p.profile_complete, p.experience, p.career_goal
+       FROM users u
+       LEFT JOIN profiles p ON u.id = p.user_id
+       ORDER BY u.created_at DESC`
+    );
+    return res.rows;
+  }
+
+  static async blockUser(userId: string) {
+    const res = await pool.query(
+      'UPDATE users SET is_blocked = true WHERE id = $1 RETURNING id, is_blocked',
+      [userId]
+    );
+    if (res.rows.length === 0) {
+      throw { status: 404, message: 'User not found' };
+    }
+    return res.rows[0];
+  }
+
+  static async unblockUser(userId: string) {
+    const res = await pool.query(
+      'UPDATE users SET is_blocked = false WHERE id = $1 RETURNING id, is_blocked',
+      [userId]
+    );
+    if (res.rows.length === 0) {
+      throw { status: 404, message: 'User not found' };
+    }
+    return res.rows[0];
+  }
+
+  static async bookMeeting(title: string, description: string, startDateTime: string, endDateTime: string, attendeeEmail: string) {
+    const meetLink = await GoogleCalendarService.createMeetLink({
+      title,
+      description,
+      startDateTime,
+      endDateTime,
+      attendeeEmail
+    });
+    return { meetLink };
   }
 }

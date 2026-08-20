@@ -13,7 +13,13 @@ import {
   ClipboardList,
   CheckCircle,
   Brain,
-  Network
+  Network,
+  Trophy,
+  BarChart3,
+  Calendar,
+  Clock,
+  ChevronRight,
+  FileText,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import confetti from "canvas-confetti";
@@ -23,7 +29,8 @@ import {
   useGetTestDetailsQuery,
   useSubmitTestMutation,
   useGenerateSkillSummaryMutation,
-  useGenerateRoadmapMutation
+  useGenerateRoadmapMutation,
+  useGetTestHistoryQuery,
 } from "@/store/api/learningApi";
 
 function AssessmentContent() {
@@ -34,6 +41,10 @@ function AssessmentContent() {
 
   const { data: testData, isLoading: isTestLoading, error: testError } = useGetTestDetailsQuery(testId || "", {
     skip: !testId,
+  });
+
+  const { data: historyData, isLoading: isHistoryLoading } = useGetTestHistoryQuery(undefined, {
+    skip: !!testId,
   });
 
   const [submitTest, { isLoading: isSubmittingTest }] = useSubmitTestMutation();
@@ -127,19 +138,147 @@ function AssessmentContent() {
     }
   };
 
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case "easy": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "medium": return "bg-amber-100 text-amber-700 border-amber-200";
+      case "hard": return "bg-red-100 text-red-700 border-red-200";
+      default: return "bg-slate-100 text-slate-600 border-slate-200";
+    }
+  };
+
+  const getScoreColor = (score: number | null) => {
+    if (score === null) return "text-slate-400";
+    if (score >= 80) return "text-emerald-600";
+    if (score >= 50) return "text-amber-600";
+    return "text-red-600";
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   if (!testId) {
+    const history = historyData?.history || [];
+    const completedTests = history.filter((t) => t.status === "completed");
+    const avgScore = completedTests.length > 0
+      ? Math.round(completedTests.reduce((sum, t) => sum + (t.score || 0), 0) / completedTests.length)
+      : 0;
+
     return (
       <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
         <HoverSidebar />
-        <main className="flex-1 ml-20 p-10 flex flex-col justify-center items-center">
-          <ClipboardList className="w-12 h-12 text-slate-300 mb-4" />
-          <p className="text-sm font-mono text-slate-500">No active test session selected. Return to the dashboard.</p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-xs cursor-pointer"
-          >
-            Dashboard
-          </button>
+        <Toaster position="top-right" />
+        <main className="flex-1 ml-20 p-6 md:p-10 max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-[10px] font-extrabold font-mono rounded-full border border-purple-200 uppercase">
+              SKILL DIAGNOSTICS
+            </span>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-mono text-slate-900 mt-3">
+              Test Reports
+            </h1>
+            <p className="text-xs text-slate-500 font-mono mt-1">
+              A complete record of your diagnostic assessments and performance.
+            </p>
+          </div>
+
+          {/* Stats Row */}
+          {!isHistoryLoading && history.length > 0 && (
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              <div className="bg-white border border-purple-100 rounded-2xl p-4 text-center">
+                <span className="text-2xl font-black text-purple-600 block">{history.length}</span>
+                <span className="text-[10px] text-slate-400 font-mono uppercase">Total Tests</span>
+              </div>
+              <div className="bg-white border border-purple-100 rounded-2xl p-4 text-center">
+                <span className="text-2xl font-black text-emerald-600 block">{completedTests.length}</span>
+                <span className="text-[10px] text-slate-400 font-mono uppercase">Completed</span>
+              </div>
+              <div className="bg-white border border-purple-100 rounded-2xl p-4 text-center">
+                <span className={`text-2xl font-black block ${getScoreColor(avgScore)}`}>{avgScore}%</span>
+                <span className="text-[10px] text-slate-400 font-mono uppercase">Avg Score</span>
+              </div>
+            </div>
+          )}
+
+          {/* Test History List */}
+          {isHistoryLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-3" />
+              <p className="text-xs font-mono text-slate-400">Loading your test history...</p>
+            </div>
+          ) : history.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <ClipboardList className="w-12 h-12 text-slate-300 mb-4" />
+              <p className="text-sm font-mono text-slate-500 mb-1">No assessments attempted yet.</p>
+              <p className="text-xs font-mono text-slate-400 mb-6">Head to your dashboard to start a skill diagnostic test.</p>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-sm cursor-pointer"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {history.map((test, idx) => (
+                <motion.div
+                  key={test.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="bg-white border border-purple-50 rounded-2xl p-5 flex items-center justify-between gap-4 hover:border-purple-200 hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      test.status === "completed" ? "bg-purple-100" : "bg-slate-100"
+                    }`}>
+                      {test.status === "completed"
+                        ? <Trophy className="w-5 h-5 text-purple-600" />
+                        : <Clock className="w-5 h-5 text-slate-400" />
+                      }
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold font-mono text-slate-800 truncate">
+                        {test.module_name || "Unknown Module"}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border capitalize ${getDifficultyColor(test.difficulty)}`}>
+                          {test.difficulty}
+                        </span>
+                        <span className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
+                          <Calendar className="w-3 h-3" />
+                          {formatDate(test.created_at)}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400">
+                          {test.total_questions} Qs
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0">
+                    {test.status === "completed" && test.score !== null ? (
+                      <div className="text-right">
+                        <span className={`text-xl font-black font-mono ${getScoreColor(test.score)}`}>
+                          {Math.round(test.score)}%
+                        </span>
+                        <p className="text-[10px] text-slate-400 font-mono">score</p>
+                      </div>
+                    ) : (
+                      <span className="px-2 py-1 bg-amber-50 text-amber-600 border border-amber-200 text-[10px] font-bold font-mono rounded-lg">
+                        In Progress
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </main>
       </div>
     );

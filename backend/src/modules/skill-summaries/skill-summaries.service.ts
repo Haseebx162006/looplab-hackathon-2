@@ -35,7 +35,7 @@ export class SkillSummariesService {
 
     // 3. Fetch test questions and answers
     const questionsRes = await pool.query(
-      'SELECT question, student_answer FROM test_questions WHERE test_id = $1',
+      'SELECT question, correct_answer, student_answer FROM test_questions WHERE test_id = $1',
       [testId]
     );
     const questions = questionsRes.rows;
@@ -43,6 +43,8 @@ export class SkillSummariesService {
     const assessment_results = questions.map((q) => ({
       question: q.question,
       answer: q.student_answer || '',
+      correct_answer: q.correct_answer,
+      is_correct: (q.student_answer || '').trim().toLowerCase() === (q.correct_answer || '').trim().toLowerCase()
     }));
 
     // 4. Call AI Agent Service
@@ -59,6 +61,7 @@ export class SkillSummariesService {
             interests: profile.interests || [],
           },
           assessment_results,
+          test_score: test.score || 0
         }),
       });
 

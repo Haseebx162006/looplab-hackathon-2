@@ -24,11 +24,16 @@ export class RoadmapsService {
         }
         const userRes = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
         const user = userRes.rows[0];
-        const questionsRes = await pool.query('SELECT question, student_answer FROM test_questions WHERE test_id = $1', [skillSummary.test_id]);
+        // Fetch test details for score
+        const testRes = await pool.query('SELECT score FROM tests WHERE id = $1', [skillSummary.test_id]);
+        const test = testRes.rows[0];
+        const questionsRes = await pool.query('SELECT question, correct_answer, student_answer FROM test_questions WHERE test_id = $1', [skillSummary.test_id]);
         const questions = questionsRes.rows;
         const assessment_results = questions.map(q => ({
             question: q.question,
-            answer: q.student_answer || ''
+            answer: q.student_answer || '',
+            correct_answer: q.correct_answer,
+            is_correct: (q.student_answer || '').trim().toLowerCase() === (q.correct_answer || '').trim().toLowerCase()
         }));
         // 4. Call AI Agent Service
         let roadmapData;
@@ -44,7 +49,8 @@ export class RoadmapsService {
                         interests: profile.interests || [],
                     },
                     assessment_results,
-                    career_goal: profile.career_goal || moduleName
+                    career_goal: profile.career_goal || moduleName,
+                    test_score: test ? (test.score || 0) : 0
                 })
             });
             if (!response.ok) {

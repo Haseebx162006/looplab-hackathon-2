@@ -59,4 +59,18 @@ export class TestsController {
       next(error);
     }
   }
+
+  static async getHistory(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const history = await TestsService.getTestHistory(userId);
+      res.status(200).json({ history });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

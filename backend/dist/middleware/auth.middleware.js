@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import { pool } from '../db/index.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_development';
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Authorization header with Bearer token is required' });
@@ -8,6 +9,12 @@ export function requireAuth(req, res, next) {
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
+        // Check database to ensure user is not blocked
+        const userRes = await pool.query('SELECT is_blocked FROM users WHERE id = $1', [decoded.id]);
+        const user = userRes.rows[0];
+        if (user && user.is_blocked) {
+            return res.status(403).json({ error: 'Your account has been blocked by the admin.' });
+        }
         req.user = decoded;
         next();
     }

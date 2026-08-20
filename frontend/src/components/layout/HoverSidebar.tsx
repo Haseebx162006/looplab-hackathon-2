@@ -20,9 +20,11 @@ import {
   Users,
   Calendar,
   Mail,
-  GraduationCap
+  GraduationCap,
+  FileText
 } from "lucide-react";
 import { useCompany } from "@/context/CompanyContext";
+import { useGetMeQuery } from "@/store/api/authApi";
 
 interface NavItem {
   id: string;
@@ -54,6 +56,12 @@ const NAV_ITEMS: NavItem[] = [
     badge: "LIVE",
   },
   {
+    id: "cv-report",
+    label: "CV Analysis",
+    href: "/cv-report",
+    icon: FileText,
+  },
+  {
     id: "settings",
     label: "Account Settings",
     href: "/settings",
@@ -63,9 +71,30 @@ const NAV_ITEMS: NavItem[] = [
 
 export const HoverSidebar: React.FC = () => {
   const [isHovered, setIsHovered] = useState(false);
+  const { isAuthenticated, logout } = useCompany();
+  const { data: userProfile } = useGetMeQuery(undefined, {
+    skip: !isAuthenticated,
+  });
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useCompany();
+
+  const activeNavItems = userProfile?.user?.role === "admin"
+    ? [
+        {
+          id: "admin",
+          label: "Mentor Dashboard",
+          href: "/admin",
+          icon: ShieldCheck,
+          badge: "ADMIN",
+        },
+        {
+          id: "settings",
+          label: "Account Settings",
+          href: "/settings",
+          icon: Settings,
+        }
+      ]
+    : [...NAV_ITEMS];
 
   return (
     <motion.aside
@@ -114,7 +143,7 @@ export const HoverSidebar: React.FC = () => {
 
         {/* Navigation Items */}
         <nav className="space-y-1.5">
-          {NAV_ITEMS.map((item) => {
+          {activeNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
@@ -140,6 +169,11 @@ export const HoverSidebar: React.FC = () => {
                         className="flex items-center justify-between w-full whitespace-nowrap overflow-hidden pr-1"
                       >
                         <span className="text-xs font-mono">{item.label}</span>
+                        {item.badge && (
+                          <span className="px-1.5 py-0.5 bg-purple-900/40 border border-purple-500/30 text-[9px] font-bold rounded-md text-purple-200">
+                            {item.badge}
+                          </span>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>

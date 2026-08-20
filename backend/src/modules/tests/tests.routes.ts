@@ -5,6 +5,7 @@ import { requireAuth } from '../../middleware/auth.middleware.js';
 const router = Router();
 
 router.post('/generate', requireAuth, TestsController.generateTest);
+router.get('/history', requireAuth, TestsController.getHistory);
 router.post('/:id/submit', requireAuth, TestsController.submitTest);
 router.get('/:id', requireAuth, TestsController.getTest);
 

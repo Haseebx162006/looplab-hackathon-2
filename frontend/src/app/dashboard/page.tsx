@@ -60,10 +60,14 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login");
-    } else if (!hasCompletedOnboarding) {
-      router.push("/onboarding");
+    } else if (userProfile) {
+      if (userProfile.user?.role === "admin") {
+        router.push("/admin");
+      } else if (!hasCompletedOnboarding) {
+        router.push("/onboarding");
+      }
     }
-  }, [isAuthenticated, hasCompletedOnboarding, router]);
+  }, [isAuthenticated, userProfile, hasCompletedOnboarding, router]);
 
   // Form State for creating a path
   const [selectedModuleId, setSelectedModuleId] = useState("");

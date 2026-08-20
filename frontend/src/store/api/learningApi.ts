@@ -114,6 +114,28 @@ export interface ProgressSummary {
   }[];
 }
 
+export interface TestHistoryItem {
+  id: string;
+  module_name: string;
+  difficulty: string;
+  status: string;
+  score: number | null;
+  total_questions: number;
+  created_at: string;
+}
+
+export interface CvReport {
+  candidate_name: string;
+  overall_score: number;
+  summary: string;
+  skills_found: string[];
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  experience_level: string;
+  suitable_roles: string[];
+}
+
 export const learningApi = createApi({
   reducerPath: "learningApi",
   baseQuery: fetchBaseQuery({
@@ -132,6 +154,10 @@ export const learningApi = createApi({
       query: () => "/modules",
       providesTags: ["Modules"],
     }),
+    getMyProfile: builder.query<{ profile: Profile & { cv_url?: string } }, void>({
+      query: () => "/onboarding/profile",
+      providesTags: ["Profile"],
+    }),
     saveProfile: builder.mutation<{ message: string; profile: Profile }, any>({
       query: (profileData) => ({
         url: "/onboarding/profile",
@@ -147,6 +173,10 @@ export const learningApi = createApi({
         body,
       }),
       invalidatesTags: ["Tests", "Progress"],
+    }),
+    getTestHistory: builder.query<{ history: TestHistoryItem[] }, void>({
+      query: () => "/tests/history",
+      providesTags: ["Tests"],
     }),
     getTestDetails: builder.query<any, string>({
       query: (id) => `/tests/${id}`,
@@ -222,13 +252,53 @@ export const learningApi = createApi({
       query: () => "/users/me/progress",
       providesTags: ["Progress", "Roadmaps", "Certificates"],
     }),
+    getAllUsers: builder.query<any[], void>({
+      query: () => "/admin/users",
+      providesTags: ["Progress"],
+    }),
+    blockUser: builder.mutation<any, string>({
+      query: (userId) => ({
+        url: `/admin/users/${userId}/block`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Progress"],
+    }),
+    unblockUser: builder.mutation<any, string>({
+      query: (userId) => ({
+        url: `/admin/users/${userId}/unblock`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Progress"],
+    }),
+    bookMentorCall: builder.mutation<any, { title: string; description?: string; startDateTime: string; endDateTime: string; attendeeEmail: string }>({
+      query: (body) => ({
+        url: "/admin/booking/meet",
+        method: "POST",
+        body,
+      }),
+    }),
+    analyzeCv: builder.mutation<{ report: CvReport; cv_url: string }, void>({
+      query: () => ({
+        url: "/cv/analyze",
+        method: "POST",
+      }),
+    }),
+    uploadCv: builder.mutation<{ message: string; cv_url: string }, { file: string; fileName: string }>({
+      query: (body) => ({
+        url: "/cv/upload",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
 export const {
   useGetModulesQuery,
+  useGetMyProfileQuery,
   useSaveProfileMutation,
   useGenerateTestMutation,
+  useGetTestHistoryQuery,
   useGetTestDetailsQuery,
   useSubmitTestMutation,
   useGenerateSkillSummaryMutation,
@@ -242,4 +312,10 @@ export const {
   useGetPendingSubmissionsQuery,
   useGetCertificateDetailsQuery,
   useGetProgressQuery,
+  useGetAllUsersQuery,
+  useBlockUserMutation,
+  useUnblockUserMutation,
+  useBookMentorCallMutation,
+  useAnalyzeCvMutation,
+  useUploadCvMutation,
 } = learningApi;

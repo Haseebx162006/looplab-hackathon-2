@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCompany } from "@/context/CompanyContext";
+import { useGetMeQuery } from "@/store/api/authApi";
 import { ShieldAlert, ArrowRight, Layers } from "lucide-react";
 import Link from "next/link";
 
@@ -14,6 +15,10 @@ export const OnboardingGuard: React.FC<{ children: React.ReactNode }> = ({ child
   const { isAuthenticated, hasCompletedOnboarding } = useCompany();
   const [mounted, setMounted] = useState(false);
 
+  const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
+  const isUserAuth = isAuthenticated || Boolean(token);
+  const { data: userProfile } = useGetMeQuery(undefined, { skip: !isUserAuth });
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -21,9 +26,8 @@ export const OnboardingGuard: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (!mounted) return;
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
-    const isUserAuth = isAuthenticated || Boolean(token);
-    const isOnboardingDone = hasCompletedOnboarding || (typeof window !== "undefined" && localStorage.getItem("seekh_onboarding_completed") === "true");
+    const isAdmin = userProfile?.user?.role === "admin";
+    const isOnboardingDone = isAdmin || hasCompletedOnboarding || (typeof window !== "undefined" && localStorage.getItem("seekh_onboarding_completed") === "true");
 
     // 1. Logged in user visiting login or signup -> Redirect to dashboard (or onboarding if incomplete)
     if (isUserAuth && (pathname === "/login" || pathname === "/signup")) {

@@ -4,4 +4,5 @@ export interface ProfileInput {
   interests: string[];
   career_goal: string;
   experience: string;
+  cv_url?: string;
 }

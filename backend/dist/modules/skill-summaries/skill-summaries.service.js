@@ -20,11 +20,13 @@ export class SkillSummariesService {
             throw { status: 400, message: 'Profile is incomplete. Please complete your onboarding profile first.' };
         }
         // 3. Fetch test questions and answers
-        const questionsRes = await pool.query('SELECT question, student_answer FROM test_questions WHERE test_id = $1', [testId]);
+        const questionsRes = await pool.query('SELECT question, correct_answer, student_answer FROM test_questions WHERE test_id = $1', [testId]);
         const questions = questionsRes.rows;
         const assessment_results = questions.map((q) => ({
             question: q.question,
             answer: q.student_answer || '',
+            correct_answer: q.correct_answer,
+            is_correct: (q.student_answer || '').trim().toLowerCase() === (q.correct_answer || '').trim().toLowerCase()
         }));
         // 4. Call AI Agent Service
         let skillProfile;
@@ -40,6 +42,7 @@ export class SkillSummariesService {
                         interests: profile.interests || [],
                     },
                     assessment_results,
+                    test_score: test.score || 0
                 }),
             });
             if (!response.ok) {

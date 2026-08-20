@@ -30,4 +30,55 @@ export class AdminReviewController {
             next(error);
         }
     }
+    static async getAllUsers(req, res, next) {
+        try {
+            const users = await AdminReviewService.getAllUsers();
+            res.status(200).json(users);
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async blockUser(req, res, next) {
+        try {
+            const { id } = req.params;
+            const result = await AdminReviewService.blockUser(id);
+            res.status(200).json({
+                message: 'User blocked successfully',
+                ...result
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async unblockUser(req, res, next) {
+        try {
+            const { id } = req.params;
+            const result = await AdminReviewService.unblockUser(id);
+            res.status(200).json({
+                message: 'User unblocked successfully',
+                ...result
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async bookMentorCall(req, res, next) {
+        try {
+            const { title, description, startDateTime, endDateTime, attendeeEmail } = req.body;
+            if (!title || !startDateTime || !endDateTime || !attendeeEmail) {
+                return res.status(400).json({ error: 'title, startDateTime, endDateTime, and attendeeEmail are required.' });
+            }
+            const result = await AdminReviewService.bookMeeting(title, description, startDateTime, endDateTime, attendeeEmail);
+            res.status(200).json({
+                message: 'Google Meet call booked successfully',
+                ...result
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }

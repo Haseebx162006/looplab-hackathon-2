@@ -16,6 +16,7 @@ import tasksRoutes from './modules/tasks/tasks.routes.js';
 import adminReviewRoutes from './modules/admin-review/admin-review.routes.js';
 import certificatesRoutes from './modules/certificates/certificates.routes.js';
 import progressRoutes from './modules/progress/progress.routes.js';
+import cvAnalyzeRoutes from './modules/cv-analyze/cv-analyze.routes.js';
 const app = express();
 // Middlewares
 app.use(cors());
@@ -34,6 +35,7 @@ app.use('/tasks', tasksRoutes);
 app.use('/admin', adminReviewRoutes);
 app.use('/certificates', certificatesRoutes);
 app.use('/users', progressRoutes);
+app.use('/cv', cvAnalyzeRoutes);
 // Root route
 app.get('/', (_req, res) => {
     res.json({

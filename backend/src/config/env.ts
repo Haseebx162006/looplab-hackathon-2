@@ -12,4 +12,9 @@ export const config = {
     password: process.env.DB_PASSWORD || 'postgres',
   },
   aiAgentServiceUrl: (process.env.AI_AGENT_SERVICE_URL || 'http://localhost:8000').replace(/\/+$/, ''),
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+  }
 };

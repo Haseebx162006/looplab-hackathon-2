@@ -137,4 +137,19 @@ export class TestsService {
             questions: questionsRes.rows
         };
     }
+    static async getTestHistory(userId) {
+        const res = await pool.query(`SELECT
+         t.id,
+         t.difficulty,
+         t.status,
+         t.score,
+         t.created_at,
+         m.name AS module_name,
+         (SELECT COUNT(*) FROM test_questions WHERE test_id = t.id) AS total_questions
+       FROM tests t
+       LEFT JOIN modules m ON t.module_id = m.id
+       WHERE t.user_id = $1
+       ORDER BY t.created_at DESC`, [userId]);
+        return res.rows;
+    }
 }

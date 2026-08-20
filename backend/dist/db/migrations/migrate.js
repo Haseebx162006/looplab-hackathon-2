@@ -348,6 +348,18 @@ export const sqlMigrations = [
       ON CONFLICT (name) DO NOTHING;
     `,
     },
+    {
+        name: '009_add_user_blocking',
+        sql: `
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false;
+    `,
+    },
+    {
+        name: '010_add_cv_url_to_profiles',
+        sql: `
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cv_url TEXT;
+    `,
+    },
 ];
 export async function runMigrations(pool) {
     const client = await pool.connect();

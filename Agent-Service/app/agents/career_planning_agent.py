@@ -17,7 +17,8 @@ if HAS_CREWAI:
     # Initialize CrewAI LLM pointing to Groq
     llm = LLM(
         model="groq/groq/compound-mini",
-        api_key=settings.GROQ_API_KEY
+        api_key=settings.GROQ_API_KEY,
+        max_retries=5
     )
 
     # Define agent

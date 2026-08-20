@@ -364,7 +364,7 @@ export async function runMigrations(pool) {
             const hasColumn = await client.query(`
         SELECT column_name 
         FROM information_schema.columns 
-        WHERE table_schema = current_schema() AND table_name = 'users' AND column_name IN ('first_name', 'last_name', 'role');
+        WHERE table_schema = current_schema() AND table_name = 'users' AND column_name IN ('first_name', 'last_name');
       `);
             if (hasColumn.rows.length > 0) {
                 console.log('⚠️ Incompatible pre-existing users table detected. Performing clean reset...');

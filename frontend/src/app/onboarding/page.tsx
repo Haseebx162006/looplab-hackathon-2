@@ -15,11 +15,14 @@ import {
   ArrowLeft
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { setOnboardingComplete } from "@/store/slices/authSlice";
 import { useSaveProfileMutation } from "@/store/api/learningApi";
 import { useCompany } from "@/context/CompanyContext";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const { setHasCompletedOnboarding, isAuthenticated } = useCompany();
   const [saveProfile, { isLoading }] = useSaveProfileMutation();
 
@@ -78,6 +81,7 @@ export default function OnboardingPage() {
       }).unwrap();
 
       toast.success("Profile customized! Initializing Seekh AI Career Engine...");
+      dispatch(setOnboardingComplete());
       setHasCompletedOnboarding(true);
 
       setTimeout(() => {

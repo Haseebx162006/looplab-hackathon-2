@@ -7,6 +7,8 @@ interface AuthResponse {
     id: string;
     email: string;
     name: string;
+    role?: string;
+    profile_complete?: boolean;
   };
 }
 

@@ -56,9 +56,11 @@ export class AuthService {
         }
         // Mark user as verified and delete the verification record
         const client = await pool.connect();
+        let user;
         try {
             await client.query('BEGIN');
-            await client.query('UPDATE users SET is_verified = true WHERE email = $1', [formattedEmail]);
+            const userUpdateRes = await client.query('UPDATE users SET is_verified = true WHERE email = $1 RETURNING *', [formattedEmail]);
+            user = userUpdateRes.rows[0];
             await client.query('DELETE FROM otp_verifications WHERE email = $1', [formattedEmail]);
             await client.query('COMMIT');
         }
@@ -69,7 +71,29 @@ export class AuthService {
         finally {
             client.release();
         }
-        return { message: 'Email verification successful. You can now log in.' };
+        if (!user) {
+            throw { status: 404, message: 'User not found after verification' };
+        }
+        const tokenPayload = {
+            id: user.id,
+            email: user.email
+        };
+        const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const profileRes = await pool.query('SELECT profile_complete FROM profiles WHERE user_id = $1', [user.id]);
+        const profileComplete = profileRes.rows[0]?.profile_complete || false;
+        return {
+            message: 'Email verification successful',
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                is_verified: user.is_verified,
+                role: user.role,
+                profile_complete: profileComplete,
+                created_at: user.created_at
+            }
+        };
     }
     static async resendOTP(email) {
         const formattedEmail = email.toLowerCase().trim();
@@ -125,6 +149,8 @@ export class AuthService {
             email: user.email
         };
         const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const profileRes = await pool.query('SELECT profile_complete FROM profiles WHERE user_id = $1', [user.id]);
+        const profileComplete = profileRes.rows[0]?.profile_complete || false;
         return {
             message: 'Login successful',
             token,
@@ -133,16 +159,23 @@ export class AuthService {
                 name: user.name,
                 email: user.email,
                 is_verified: user.is_verified,
+                role: user.role,
+                profile_complete: profileComplete,
                 created_at: user.created_at
             }
         };
     }
     static async getUserById(id) {
-        const userRes = await pool.query('SELECT id, name, email, is_verified, created_at FROM users WHERE id = $1', [id]);
+        const userRes = await pool.query('SELECT id, name, email, role, is_verified, created_at FROM users WHERE id = $1', [id]);
         const user = userRes.rows[0] || null;
         if (!user) {
             throw { status: 404, message: 'User not found' };
         }
-        return user;
+        const profileRes = await pool.query('SELECT profile_complete FROM profiles WHERE user_id = $1', [id]);
+        const profileComplete = profileRes.rows[0]?.profile_complete || false;
+        return {
+            ...user,
+            profile_complete: profileComplete
+        };
     }
 }

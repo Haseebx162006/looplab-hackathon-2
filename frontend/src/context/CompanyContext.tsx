@@ -19,25 +19,39 @@ const CompanyContext = createContext<CompanyContextType>({
 });
 
 export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticatedState] = useState<boolean>(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboardingState] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("seekh_auth_token");
       const onboarding = localStorage.getItem("seekh_onboarding_completed");
-      setIsAuthenticated(Boolean(token));
-      setHasCompletedOnboarding(onboarding === "true");
+      setIsAuthenticatedState(Boolean(token));
+      setHasCompletedOnboardingState(onboarding === "true");
     }
   }, []);
+
+  const setIsAuthenticated = (val: boolean) => {
+    setIsAuthenticatedState(val);
+    if (typeof window !== "undefined" && !val) {
+      localStorage.removeItem("seekh_auth_token");
+    }
+  };
+
+  const setHasCompletedOnboarding = (val: boolean) => {
+    setHasCompletedOnboardingState(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("seekh_onboarding_completed", String(val));
+    }
+  };
 
   const logout = () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("seekh_auth_token");
       localStorage.removeItem("seekh_onboarding_completed");
     }
-    setIsAuthenticated(false);
-    setHasCompletedOnboarding(false);
+    setIsAuthenticatedState(false);
+    setHasCompletedOnboardingState(false);
   };
 
   return (

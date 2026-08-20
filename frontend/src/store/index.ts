@@ -10,7 +10,9 @@ export const store = configureStore({
     [learningApi.reducerPath]: learningApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(authApi.middleware, learningApi.middleware),
+    getDefaultMiddleware()
+      .concat(authApi.middleware)
+      .concat(learningApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

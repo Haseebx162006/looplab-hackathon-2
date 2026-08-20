@@ -105,12 +105,13 @@ export default function LoginPage() {
       const data = await verifyOtp({ email, otp: fullCode }).unwrap();
 
       if (data.token) {
-        dispatch(setCredentials({ token: data.token }));
+        const isProfileComplete = data.user?.profile_complete || false;
+        dispatch(setCredentials({ token: data.token, hasCompletedOnboarding: isProfileComplete }));
         setIsAuthenticated(true);
-        setHasCompletedOnboarding(true);
+        setHasCompletedOnboarding(isProfileComplete);
         toast.success("Identity verified! Launching workspace...");
         setTimeout(() => {
-          router.push("/");
+          router.push(isProfileComplete ? "/dashboard" : "/onboarding");
         }, 1200);
       } else {
         throw new Error("Token missing from response");
@@ -132,12 +133,13 @@ export default function LoginPage() {
       const data = await login({ email, password }).unwrap();
 
       if (data.token) {
-        dispatch(setCredentials({ token: data.token }));
+        const isProfileComplete = data.user?.profile_complete || false;
+        dispatch(setCredentials({ token: data.token, hasCompletedOnboarding: isProfileComplete }));
         setIsAuthenticated(true);
-        setHasCompletedOnboarding(true);
+        setHasCompletedOnboarding(isProfileComplete);
         toast.success("Welcome back! Launching Seekh dashboard...");
         setTimeout(() => {
-          router.push("/");
+          router.push(isProfileComplete ? "/dashboard" : "/onboarding");
         }, 1000);
       } else {
         throw new Error("Token missing from response");

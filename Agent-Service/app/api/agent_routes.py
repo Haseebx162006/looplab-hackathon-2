@@ -66,7 +66,7 @@ def parse_and_clean_json(raw_text: str) -> dict:
         )
 
 @router.post("/analyze-skills", response_model=SkillProfileResponse, status_code=status.HTTP_200_OK)
-async def analyze_skills(payload: AnalyzeSkillsRequest):
+def analyze_skills(payload: AnalyzeSkillsRequest):
     try:
         # Convert Pydantic request models to string/json representation for CrewAI tasks
         profile_str = payload.student_profile.model_dump_json()
@@ -89,7 +89,7 @@ async def analyze_skills(payload: AnalyzeSkillsRequest):
         )
 
 @router.post("/generate-roadmap", response_model=RoadmapResponse, status_code=status.HTTP_200_OK)
-async def generate_roadmap(payload: GenerateRoadmapRequest):
+def generate_roadmap(payload: GenerateRoadmapRequest):
     try:
         # Convert models to JSON strings for tools/tasks
         profile_str = payload.student_profile.model_dump_json()

@@ -22,11 +22,19 @@ except ImportError:
 if HAS_CREWAI:
     # Initialize CrewAI LLM pointing to Groq
     llm = LLM(
-        model="groq/groq/compound-mini",
+        model="groq/llama-3.3-70b-versatile",
         api_key=settings.GROQ_API_KEY,
         max_retries=5,
         drop_params=True,
-        additional_drop_params=["cache_breakpoint"]
+        additional_drop_params=["cache_breakpoint"],
+        fallbacks=[
+            "groq/openai/gpt-oss-120b",
+            "groq/openai/gpt-oss-20b",
+            "groq/llama-3.1-8b-instant",
+            "groq/qwen/qwen3.6-27b",
+            "groq/groq/compound",
+            "groq/groq/compound-mini"
+        ]
     )
 
     # Define agent

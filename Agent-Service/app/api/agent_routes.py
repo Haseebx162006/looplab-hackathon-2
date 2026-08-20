@@ -33,10 +33,18 @@ def run_test_generation(module: str, difficulty: str) -> str:
     """
     
     response = litellm.completion(
-        model="groq/groq/compound-mini",
+        model="groq/llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}],
         api_key=settings.GROQ_API_KEY,
-        response_format={"type": "json_object"}
+        response_format={"type": "json_object"},
+        fallbacks=[
+            "groq/openai/gpt-oss-120b",
+            "groq/openai/gpt-oss-20b",
+            "groq/llama-3.1-8b-instant",
+            "groq/qwen/qwen3.6-27b",
+            "groq/groq/compound",
+            "groq/groq/compound-mini"
+        ]
     )
     return response.choices[0].message.content or "{}"
 

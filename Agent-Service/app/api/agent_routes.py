@@ -175,6 +175,16 @@ def extract_text_from_cv(cv_url: str) -> str:
         raise HTTPException(status_code=400, detail="CV download timed out. The file may be too large or the server is slow.")
     except req.exceptions.HTTPError as e:
         logger.error(f"HTTP error downloading CV: {e}")
+        status_code = getattr(e.response, "status_code", None)
+        if status_code == 401:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Cloudinary blocked public PDF delivery (401). "
+                    "Re-upload the CV so analysis uses extracted text, or enable "
+                    "'Allow delivery of PDF and ZIP files' in the Cloudinary Security settings."
+                ),
+            )
         raise HTTPException(status_code=400, detail=f"CV server returned an error: {str(e)}")
     except Exception as e:
         logger.error(f"Unexpected error downloading CV: {e}")
@@ -215,11 +225,13 @@ def extract_text_from_cv(cv_url: str) -> str:
 @router.post("/analyze-cv", status_code=status.HTTP_200_OK)
 def analyze_cv(payload: dict):
     cv_url = payload.get("cv_url", "")
-    if not cv_url:
-        raise HTTPException(status_code=400, detail="cv_url is required.")
+    cv_text = (payload.get("cv_text") or "").strip()
 
-    # 1. Extract text
-    cv_text = extract_text_from_cv(cv_url)
+    if not cv_text:
+        if not cv_url:
+            raise HTTPException(status_code=400, detail="cv_url or cv_text is required.")
+        cv_text = extract_text_from_cv(cv_url)
+
     if not cv_text or len(cv_text) < 50:
         raise HTTPException(status_code=422, detail="CV text is too short to analyze. Please ensure the file contains readable content.")
 

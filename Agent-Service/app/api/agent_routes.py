@@ -6,6 +6,7 @@ from app.schemas.request_models import AnalyzeSkillsRequest, GenerateRoadmapRequ
 from app.schemas.response_models import SkillProfileResponse, RoadmapResponse, TestQuestionsResponse
 from app.agents.career_planning_agent import run_skill_analysis_crew, run_roadmap_crew
 from app.config.settings import settings
+from app.config.llm import call_llm_with_fallback
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 logger = logging.getLogger("app")
@@ -160,31 +161,55 @@ def extract_text_from_cv(cv_url: str) -> str:
     import requests as req
     import io
 
+    logger.info(f"Downloading CV from: {cv_url}")
     try:
-        resp = req.get(cv_url, timeout=20)
+        resp = req.get(cv_url, timeout=30, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; CVAnalyzer/1.0)"
+        })
         resp.raise_for_status()
+    except req.exceptions.ConnectionError as e:
+        logger.error(f"Connection error downloading CV: {e}")
+        raise HTTPException(status_code=400, detail=f"Could not connect to download CV. Please check the URL is accessible: {str(e)}")
+    except req.exceptions.Timeout:
+        logger.error("Timeout downloading CV")
+        raise HTTPException(status_code=400, detail="CV download timed out. The file may be too large or the server is slow.")
+    except req.exceptions.HTTPError as e:
+        logger.error(f"HTTP error downloading CV: {e}")
+        raise HTTPException(status_code=400, detail=f"CV server returned an error: {str(e)}")
     except Exception as e:
+        logger.error(f"Unexpected error downloading CV: {e}")
         raise HTTPException(status_code=400, detail=f"Could not download CV: {str(e)}")
 
     content_type = resp.headers.get("content-type", "").lower()
     raw_bytes = resp.content
+    logger.info(f"CV downloaded successfully. Size: {len(raw_bytes)} bytes, Content-Type: {content_type}")
 
-    # Try PDF extraction
+    if len(raw_bytes) < 100:
+        raise HTTPException(status_code=422, detail="The downloaded file appears to be empty or too small to be a valid CV.")
+
+    # Try PDF extraction first
     try:
         import pdfplumber
         with pdfplumber.open(io.BytesIO(raw_bytes)) as pdf:
             pages_text = [page.extract_text() or "" for page in pdf.pages]
         text = "\n".join(pages_text).strip()
         if text:
+            logger.info(f"PDF text extracted successfully. Length: {len(text)} chars")
             return text
-    except Exception:
-        pass
+        logger.warning("PDF extraction returned empty text, falling back to raw text")
+    except Exception as e:
+        logger.warning(f"PDF extraction failed: {e}, falling back to raw text")
 
     # Fallback: treat as raw text (for .txt or plain uploads)
     try:
-        return raw_bytes.decode("utf-8", errors="ignore").strip()
-    except Exception:
-        raise HTTPException(status_code=422, detail="Could not extract readable text from the uploaded CV file.")
+        text = raw_bytes.decode("utf-8", errors="ignore").strip()
+        if text:
+            logger.info(f"Raw text extracted. Length: {len(text)} chars")
+            return text
+    except Exception as e:
+        logger.error(f"UTF-8 decode failed: {e}")
+
+    raise HTTPException(status_code=422, detail="Could not extract readable text from the uploaded CV file. The file may be corrupted or in an unsupported format.")
 
 
 @router.post("/analyze-cv", status_code=status.HTTP_200_OK)
@@ -198,7 +223,7 @@ def analyze_cv(payload: dict):
     if not cv_text or len(cv_text) < 50:
         raise HTTPException(status_code=422, detail="CV text is too short to analyze. Please ensure the file contains readable content.")
 
-    # Truncate to stay within token limits (~2000 chars ≈ 500 tokens)
+    # Truncate to stay within token limits
     cv_snippet = cv_text[:3000]
 
     prompt = f"""You are an expert career coach and CV reviewer. Analyze the following CV text and return a structured JSON report.
@@ -220,20 +245,11 @@ Return ONLY a JSON object with this exact structure (no extra text, no markdown)
 }}
 overall_score must be an integer between 0-100 based on CV quality."""
 
-    models = settings.groq_models_list
-    primary_model = models[0] if models else "groq/openai/gpt-oss-120b"
-    fallback_models = models[1:] if len(models) > 1 else []
-
     try:
-        response = litellm.completion(
-            model=primary_model,
-            messages=[{"role": "user", "content": prompt}],
-            api_key=settings.GROQ_API_KEY,
-            response_format={"type": "json_object"},
-            fallbacks=fallback_models,
-            max_tokens=800,
+        raw_output = call_llm_with_fallback(
+            prompt,
+            response_format={"type": "json_object"}
         )
-        raw_output = response.choices[0].message.content or "{}"
         report = parse_and_clean_json(raw_output)
         return {"report": report}
     except HTTPException:

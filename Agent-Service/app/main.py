@@ -48,7 +48,9 @@ async def root():
         "endpoints": {
             "health": "GET /health",
             "analyze_skills": "POST /agent/analyze-skills",
-            "generate_roadmap": "POST /agent/generate-roadmap"
+            "generate_roadmap": "POST /agent/generate-roadmap",
+            "analyze_cv": "POST /agent/analyze-cv",
+            "generate_test": "POST /agent/generate-test"
         }
     }
 

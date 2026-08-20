@@ -86,6 +86,30 @@ export const sqlMigrations = [
       );
     `,
     },
+    {
+        name: '004_fix_users_columns',
+        sql: `
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
+    `,
+    },
+    {
+        name: '005_set_users_id_default',
+        sql: `
+      ALTER TABLE users ALTER COLUMN id SET DEFAULT gen_random_uuid();
+    `,
+    },
+    {
+        name: '006_make_users_role_nullable',
+        sql: `
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='role') THEN
+          EXECUTE 'ALTER TABLE users ALTER COLUMN role DROP NOT NULL';
+        END IF;
+      END $$;
+    `,
+    },
 ];
 export async function runMigrations(pool) {
     const client = await pool.connect();
@@ -97,11 +121,31 @@ export async function runMigrations(pool) {
         executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
+        // Paka Solution: If incompatible columns (first_name, role) exist in users table, perform a clean reset
+        try {
+            const hasColumn = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name IN ('first_name', 'last_name', 'role');
+      `);
+            if (hasColumn.rows.length > 0) {
+                console.log('⚠️ Incompatible pre-existing users table detected. Performing clean reset...');
+                await client.query('DROP TABLE IF EXISTS otp_verifications CASCADE;');
+                await client.query('DROP TABLE IF EXISTS users CASCADE;');
+                await client.query("DELETE FROM _schema_migrations WHERE name IN ('003_create_auth_tables', '004_fix_users_columns', '005_set_users_id_default', '006_make_users_role_nullable');");
+            }
+        }
+        catch (e) {
+            // Users table doesn't exist yet
+        }
         for (const migration of sqlMigrations) {
             const checkResult = await client.query('SELECT name FROM _schema_migrations WHERE name = $1', [migration.name]);
             if (checkResult.rows.length === 0) {
                 await client.query('BEGIN');
                 await client.query(migration.sql);
+                await client.query('INSERT INTO _schema_migrations (name) VALUES ($1)', [migration.name]);
+                await client.query('COMMIT');
+                console.log(`✅ Applied migration: ${migration.name}`);
                 if (migration.name === '002_create_rag_tables') {
                     try {
                         await client.query(`
@@ -109,13 +153,11 @@ export async function runMigrations(pool) {
               ON knowledge_chunks USING hnsw (embedding vector_cosine_ops);
             `);
                     }
-                    catch {
-                        // HNSW index created or skipped
+                    catch (e) {
+                        // HNSW index created or skipped (e.g. pgvector < 0.5.0)
+                        console.log('ℹ️ HNSW index creation skipped or unsupported, falling back to flat index');
                     }
                 }
-                await client.query('INSERT INTO _schema_migrations (name) VALUES ($1)', [migration.name]);
-                await client.query('COMMIT');
-                console.log(`✅ Applied migration: ${migration.name}`);
             }
         }
     }

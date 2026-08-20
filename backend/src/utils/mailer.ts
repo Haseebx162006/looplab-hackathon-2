@@ -1,9 +1,9 @@
 import { google } from 'googleapis';
 
-const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
-const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
-const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN;
-const GMAIL_USER_EMAIL = process.env.GMAIL_USER_EMAIL || 'me';
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN;
+const GMAIL_USER_EMAIL = process.env.GMAIL_USER_EMAIL || process.env.GOOGLE_USER_EMAIL || 'me';
 
 let gmailClient: any = null;
 

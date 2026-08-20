@@ -39,10 +39,11 @@ app.get('/', (_req, res) => {
 app.use(errorHandler);
 // Start Server
 async function startServer() {
-    await initDatabase();
     app.listen(config.port, () => {
         console.log(`⚡ Server running on http://localhost:${config.port} in ${config.nodeEnv} mode (TS)`);
     });
+    // Initialize database in the background
+    initDatabase();
 }
 startServer();
 export default app;

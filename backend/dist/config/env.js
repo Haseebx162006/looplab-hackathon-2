@@ -10,4 +10,5 @@ export const config = {
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || 'postgres',
     },
+    aiAgentServiceUrl: process.env.AI_AGENT_SERVICE_URL || 'http://localhost:8000',
 };

@@ -32,7 +32,9 @@ import {
   useGetAllUsersQuery,
   useBlockUserMutation,
   useUnblockUserMutation,
-  useBookMentorCallMutation
+  useBookMentorCallMutation,
+  useGetAdminBookingRequestsQuery,
+  useRespondToBookingRequestMutation
 } from "@/store/api/learningApi";
 
 export default function AdminDashboardPage() {
@@ -55,7 +57,7 @@ export default function AdminDashboardPage() {
   }, [isAuthenticated, userProfile, router]);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<"submissions" | "users">("submissions");
+  const [activeTab, setActiveTab] = useState<"submissions" | "users" | "bookings">("submissions");
 
   // Filter & Search State
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -87,6 +89,47 @@ export default function AdminDashboardPage() {
 
   const [bookCall, { isLoading: isBookingCall }] = useBookMentorCallMutation();
 
+  // Call Bookings State
+  const { data: adminBookingRequests, refetch: refetchAdminBookings } = useGetAdminBookingRequestsQuery(undefined, {
+    skip: !userProfile || userProfile.user?.role !== "admin",
+  });
+  const [respondToBookingRequest, { isLoading: isRespondingToBooking }] = useRespondToBookingRequestMutation();
+  const [selectedRequestForReview, setSelectedRequestForReview] = useState<any | null>(null);
+  const [scheduledAtDate, setScheduledAtDate] = useState("");
+  const [scheduledAtTime, setScheduledAtTime] = useState("");
+  const [adminResponseComment, setAdminResponseComment] = useState("");
+
+  const handleRespondToBooking = async (decision: "approve" | "reject") => {
+    if (!selectedRequestForReview) return;
+    
+    let scheduledAt: string | undefined = undefined;
+    if (decision === "approve") {
+      if (!scheduledAtDate || !scheduledAtTime) {
+        toast.error("Please specify a scheduled date and time.");
+        return;
+      }
+      scheduledAt = `${scheduledAtDate}T${scheduledAtTime}:00`;
+    }
+
+    try {
+      await respondToBookingRequest({
+        requestId: selectedRequestForReview.id,
+        decision,
+        scheduledAt,
+        comment: adminResponseComment,
+      }).unwrap();
+
+      toast.success(`Meeting request successfully ${decision === "approve" ? "scheduled" : "rejected"}!`);
+      setSelectedRequestForReview(null);
+      setScheduledAtDate("");
+      setScheduledAtTime("");
+      setAdminResponseComment("");
+      refetchAdminBookings();
+    } catch (err: any) {
+      toast.error(err.data?.error || err.data?.message || err.message || "Failed to respond to request.");
+    }
+  };
+
   // Review submission handler
   const handleReview = async (decision: "approve" | "reject") => {
     if (!selectedSubmission) return;
@@ -108,7 +151,7 @@ export default function AdminDashboardPage() {
       setReviewComment("");
       refetchPending();
     } catch (err: any) {
-      toast.error(err.data?.message || err.message || "Failed to process review.");
+      toast.error(err.data?.error || err.data?.message || err.message || "Failed to process review.");
     }
   };
 
@@ -124,7 +167,7 @@ export default function AdminDashboardPage() {
       }
       refetchUsers();
     } catch (err: any) {
-      toast.error(err.data?.message || err.message || "Failed to change user block status.");
+      toast.error(err.data?.error || err.data?.message || err.message || "Failed to change user block status.");
     }
   };
 
@@ -159,7 +202,7 @@ export default function AdminDashboardPage() {
       toast.success("Google Meet call booked successfully!");
       refetchUsers();
     } catch (err: any) {
-      toast.error(err.data?.message || err.message || "Failed to book meeting.");
+      toast.error(err.data?.error || err.data?.message || err.message || "Failed to book meeting.");
     }
   };
 
@@ -233,6 +276,22 @@ export default function AdminDashboardPage() {
             >
               <Users className="w-4 h-4" />
               <span>User Roster</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("bookings")}
+              className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "bookings"
+                  ? "bg-[#1E192B] text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Call Requests</span>
+              {adminBookingRequests && adminBookingRequests.filter((r: any) => r.status === 'pending').length > 0 && (
+                <span className="w-5 h-5 bg-red-500 text-[10px] text-white flex items-center justify-center rounded-full">
+                  {adminBookingRequests.filter((r: any) => r.status === 'pending').length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -332,14 +391,38 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                          Submitted Exercise Answer
-                        </label>
-                        <div className="p-4 border border-purple-50 rounded-2xl bg-slate-900 text-xs font-mono text-emerald-400 whitespace-pre-wrap break-all max-h-56 overflow-y-auto shadow-inner leading-relaxed">
-                          {selectedSubmission.content}
+                      {selectedSubmission.content && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
+                            Submitted Exercise Answer
+                          </label>
+                          <div className="p-4 border border-purple-50 rounded-2xl bg-slate-900 text-xs font-mono text-emerald-400 whitespace-pre-wrap break-all max-h-56 overflow-y-auto shadow-inner leading-relaxed">
+                            {selectedSubmission.content}
+                          </div>
                         </div>
-                      </div>
+                      )}
+
+                      {selectedSubmission.links && selectedSubmission.links.length > 0 && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
+                            Submitted Links
+                          </label>
+                          <div className="p-3 border border-purple-50 rounded-2xl bg-slate-900 text-xs font-mono text-emerald-400 space-y-1.5 max-h-36 overflow-y-auto shadow-inner">
+                            {selectedSubmission.links.map((link: string, idx: number) => (
+                              <a
+                                key={idx}
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1.5 break-all"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                {link}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
@@ -388,7 +471,7 @@ export default function AdminDashboardPage() {
                 </AnimatePresence>
               </div>
             </motion.div>
-          ) : (
+          ) : activeTab === "users" ? (
             /* Users Roster List */
             <motion.div
               key="users-tab"
@@ -509,6 +592,194 @@ export default function AdminDashboardPage() {
                     <p className="text-xs text-slate-500 font-mono">No users found matching query.</p>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          ) : (
+            /* Bookings tab */
+            <motion.div
+              key="bookings-tab"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+            >
+              {/* Bookings List */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="bg-white border border-purple-100 rounded-3xl p-6 shadow-xs">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold font-mono text-slate-800 uppercase tracking-wider">
+                      Mentor Call Requests
+                    </h3>
+                    <span className="px-2.5 py-1 bg-red-50 border border-red-200 text-red-700 text-[10px] font-mono rounded-full font-bold font-extrabold font-mono">
+                      {adminBookingRequests?.filter((r: any) => r.status === 'pending').length || 0} Pending
+                    </span>
+                  </div>
+
+                  {adminBookingRequests && adminBookingRequests.length > 0 ? (
+                    <div className="space-y-3">
+                      {adminBookingRequests.map((req: any) => {
+                        let statusColor = "bg-slate-100 text-slate-605 border-slate-200";
+                        if (req.status === "approved") {
+                          statusColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                        } else if (req.status === "rejected") {
+                          statusColor = "bg-red-50 text-red-700 border-red-200";
+                        } else {
+                          statusColor = "bg-purple-50 text-purple-700 border-purple-200";
+                        }
+
+                        return (
+                          <div
+                            key={req.id}
+                            onClick={() => {
+                              if (req.status === 'pending') {
+                                setSelectedRequestForReview(req);
+                              }
+                            }}
+                            className={`p-4 border rounded-2xl transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${
+                              req.status === 'pending' ? 'cursor-pointer hover:border-purple-105 hover:bg-purple-50/5' : ''
+                            } ${
+                              selectedRequestForReview?.id === req.id
+                                ? "border-purple-600 bg-purple-50/15 shadow-xs"
+                                : "border-purple-50"
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-xs font-bold font-mono text-slate-700">{req.title}</h4>
+                                <span className={`px-2 py-0.5 text-[8px] font-bold font-mono rounded-md uppercase border ${statusColor}`}>
+                                  {req.status}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-450 font-mono">
+                                Student: {req.student_name} ({req.student_email})
+                              </p>
+                              {req.description && (
+                                <p className="text-[10px] font-mono text-slate-500 bg-slate-50 border border-slate-100 p-2 rounded-lg mt-1">
+                                  "{req.description}"
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right shrink-0 font-mono text-[9px] text-slate-400">
+                              {req.status === 'approved' ? (
+                                <div className="space-y-1">
+                                  <span className="block text-slate-655 font-bold">Scheduled: {new Date(req.scheduled_at).toLocaleDateString()}</span>
+                                  <a
+                                    href={req.meet_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-purple-600 hover:underline font-semibold"
+                                  >
+                                    <ExternalLink className="w-3 h-3" /> Meet Link
+                                  </a>
+                                </div>
+                              ) : (
+                                <span>Requested {new Date(req.created_at).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-10 text-center border border-dashed border-purple-100 rounded-3xl">
+                      <Calendar className="w-12 h-12 text-slate-350 mx-auto mb-2" />
+                      <p className="text-xs text-slate-505 font-mono">No call requests submitted yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Respond Console */}
+              <div>
+                <AnimatePresence mode="wait">
+                  {selectedRequestForReview ? (
+                    <motion.div
+                      key={selectedRequestForReview.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="bg-white border border-purple-100 rounded-3xl p-5 shadow-xs space-y-5"
+                    >
+                      <div>
+                        <span className="text-[9px] font-bold font-mono text-slate-400 uppercase font-bold text-[10px]">Call Request Review</span>
+                        <h3 className="text-sm font-bold font-mono text-slate-808 mt-1 text-slate-800">{selectedRequestForReview.title}</h3>
+                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">Student: {selectedRequestForReview.student_name}</p>
+                      </div>
+
+                      {selectedRequestForReview.description && (
+                        <div className="space-y-1.5 text-left">
+                          <label className="text-[10px] font-bold font-mono text-slate-500">Student Details</label>
+                          <div className="p-3 border border-purple-50 rounded-xl bg-purple-50/5 text-xs font-mono text-slate-700 whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+                            {selectedRequestForReview.description}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2 border-t border-purple-50 pt-3 text-left">
+                        <label className="text-[10px] font-bold font-mono text-slate-550 block">Schedule Date & Time</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="date"
+                            value={scheduledAtDate}
+                            onChange={(e) => setScheduledAtDate(e.target.value)}
+                            className="p-2 border border-purple-100 rounded-xl font-mono text-xs cursor-pointer bg-white text-slate-700"
+                          />
+                          <input
+                            type="time"
+                            value={scheduledAtTime}
+                            onChange={(e) => setScheduledAtTime(e.target.value)}
+                            className="p-2 border border-purple-100 rounded-xl font-mono text-xs cursor-pointer bg-white text-slate-700"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-[10px] font-bold font-mono text-slate-500 block">Feedback Comment (Optional)</label>
+                        <textarea
+                          value={adminResponseComment}
+                          onChange={(e) => setAdminResponseComment(e.target.value)}
+                          placeholder="Provide details about Meet agenda, or explain reject reason..."
+                          className="w-full h-24 p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs resize-none text-slate-700 bg-white"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <button
+                          onClick={() => handleRespondToBooking("reject")}
+                          disabled={isRespondingToBooking}
+                          className="flex items-center justify-center gap-1.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-755 border border-red-200 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          <XCircle className="w-4 h-4" /> Reject Request
+                        </button>
+                        <button
+                          onClick={() => handleRespondToBooking("approve")}
+                          disabled={isRespondingToBooking}
+                          className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-650 hover:bg-emerald-750 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                          <CheckCircle className="w-4 h-4" /> Accept Call
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => setSelectedRequestForReview(null)}
+                        className="w-full py-2 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl font-mono text-[10px] font-bold transition-colors cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="no-selection"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="p-6 text-center border border-purple-100 bg-purple-50/5 rounded-3xl"
+                    >
+                      <Calendar className="w-10 h-10 text-slate-350 mx-auto mb-2" />
+                      <p className="text-xs text-slate-505 font-mono">
+                        Select a pending call request from the list to view details and schedule check-in.
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           )}

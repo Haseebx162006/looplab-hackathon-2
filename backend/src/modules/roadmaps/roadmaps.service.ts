@@ -13,14 +13,11 @@ export class RoadmapsService {
       throw { status: 404, message: 'Skill summary not found or does not belong to you.' };
     }
 
-    // 2. Check if user already has an active roadmap in progress
-    const activeRoadmapRes = await pool.query(
-      "SELECT id FROM roadmaps WHERE user_id = $1 AND status = 'in_progress'",
+    // 2. Archive any existing active roadmap in progress
+    await pool.query(
+      "UPDATE roadmaps SET status = 'abandoned' WHERE user_id = $1 AND status = 'in_progress'",
       [userId]
     );
-    if (activeRoadmapRes.rows.length > 0) {
-      throw { status: 400, message: 'You already have an active roadmap in progress. Please complete or abandon it first.' };
-    }
 
     // 3. Fetch module name, profile and test questions/answers
     const moduleRes = await pool.query('SELECT name FROM modules WHERE id = $1', [skillSummary.module_id]);
@@ -188,6 +185,27 @@ export class RoadmapsService {
     );
     if (res.rows.length === 0) {
       throw { status: 400, message: 'No active roadmap found to abandon.' };
+    }
+    return res.rows[0];
+  }
+
+  static async resumeRoadmap(userId: string, roadmapId: string) {
+    // 1. Verify no other roadmap is in_progress
+    const activeRes = await pool.query(
+      "SELECT id FROM roadmaps WHERE user_id = $1 AND status = 'in_progress'",
+      [userId]
+    );
+    if (activeRes.rows.length > 0) {
+      throw { status: 400, message: 'You already have another active roadmap. Complete or abandon it first.' };
+    }
+
+    // 2. Resume the roadmap
+    const res = await pool.query(
+      "UPDATE roadmaps SET status = 'in_progress' WHERE id = $1 AND user_id = $2 AND status = 'abandoned' RETURNING *",
+      [roadmapId, userId]
+    );
+    if (res.rows.length === 0) {
+      throw { status: 404, message: 'Roadmap not found or cannot be resumed.' };
     }
     return res.rows[0];
   }

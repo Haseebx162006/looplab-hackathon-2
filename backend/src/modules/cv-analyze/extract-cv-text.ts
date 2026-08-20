@@ -16,5 +16,10 @@ export async function extractCvText(file: string): Promise<string> {
   }
 
   const parsed = await pdfParse(buffer);
-  return (parsed.text || '').replace(/\s+/g, ' ').trim();
+  return (parsed.text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }

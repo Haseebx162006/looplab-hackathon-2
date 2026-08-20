@@ -9,7 +9,6 @@ import {
   Download,
   CheckCircle,
   AlertCircle,
-  Star,
   TrendingUp,
   TrendingDown,
   Lightbulb,
@@ -17,6 +16,8 @@ import {
   Award,
   ArrowLeft,
   BarChart3,
+  ScanSearch,
+  Layers,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { HoverSidebar } from "@/components/layout/HoverSidebar";
@@ -80,13 +81,13 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
     doc.setFontSize(size);
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.setTextColor(...color);
-    const lines = doc.splitTextToSize(text, colW);
+    const lines = doc.splitTextToSize(text || "—", colW);
     lines.forEach((line: string) => {
-      if (y > 270) { doc.addPage(); y = 22; }
+      if (y > 272) { doc.addPage(); y = 22; }
       doc.text(line, margin, y);
-      y += size * 0.45;
+      y += Math.max(5, size * 0.5);
     });
-    y += 2;
+    y += 1.5;
   };
 
   const addSection = (title: string) => {
@@ -98,8 +99,8 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
     y += 1;
   };
 
-  const addBullets = (items: string[], color: [number, number, number] = [50, 50, 50]) => {
-    items.forEach((item) => {
+  const addBullets = (items: string[] = [], color: [number, number, number] = [50, 50, 50]) => {
+    (items || []).forEach((item) => {
       addLine(`• ${item}`, 10, false, color);
     });
   };
@@ -117,10 +118,28 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
   y = 28;
 
   // Candidate + Score
-  addLine(report.candidate_name || "Candidate", 15, true, [30, 30, 30]);
-  addLine(`Experience Level: ${report.experience_level}`, 10, false, [100, 100, 100]);
-  addLine(`CV Score: ${report.overall_score} / 100`, 11, true,
-    report.overall_score >= 80 ? [5, 150, 105] : report.overall_score >= 60 ? [180, 120, 20] : [220, 38, 38]);
+  addLine(report.candidate_name || "Candidate", 16, true, [30, 30, 30]);
+  addLine(
+    `${report.experience_level}${report.target_role ? `  ·  Target: ${report.target_role}` : ""}`,
+    10,
+    false,
+    [100, 100, 100]
+  );
+  addLine(
+    `CV Score: ${report.overall_score} / 100`,
+    12,
+    true,
+    report.overall_score >= 80 ? [5, 150, 105] : report.overall_score >= 60 ? [180, 120, 20] : [220, 38, 38]
+  );
+  if (report.score_breakdown) {
+    const b = report.score_breakdown;
+    addLine(
+      `Breakdown — Content ${b.content}/25 · Impact ${b.impact}/25 · Structure ${b.structure}/25 · ATS ${b.ats}/25`,
+      9,
+      false,
+      [90, 90, 90]
+    );
+  }
   y += 2;
 
   // Summary
@@ -129,7 +148,7 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
 
   // Skills
   addSection("Skills Identified");
-  addLine(report.skills_found.join(" · "), 10, false, [88, 28, 135]);
+  addLine((report.skills_found || []).join(" · ") || "—", 10, false, [88, 28, 135]);
 
   // Strengths
   addSection("Strengths");
@@ -145,7 +164,17 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
 
   // Suitable Roles
   addSection("Suitable Roles");
-  addLine(report.suitable_roles.join(" · "), 10, false, [30, 90, 180]);
+  addLine((report.suitable_roles || []).join(" · ") || "—", 10, false, [30, 90, 180]);
+
+  if (report.missing_sections && report.missing_sections.length > 0) {
+    addSection("Missing Sections");
+    addBullets(report.missing_sections, [180, 80, 20]);
+  }
+
+  if (report.ats_tips && report.ats_tips.length > 0) {
+    addSection("ATS Tips");
+    addBullets(report.ats_tips, [30, 30, 30]);
+  }
 
   // Footer
   const pages = (doc.internal as any).getNumberOfPages();
@@ -306,12 +335,40 @@ export default function CvReportPage() {
                 <h2 className="text-lg font-black font-mono text-slate-800 mt-3">
                   {report.candidate_name || "Candidate"}
                 </h2>
-                <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold font-mono border ${scoreColors?.bg} ${scoreColors?.text} border-current`}>
-                  {report.experience_level}
-                </span>
-                <p className="text-xs font-mono text-slate-500 mt-3 max-w-sm mx-auto leading-relaxed">
+                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold font-mono border ${scoreColors?.bg} ${scoreColors?.text} border-current`}>
+                    {report.experience_level}
+                  </span>
+                  {report.target_role && (
+                    <span className="inline-block px-3 py-1 rounded-full text-xs font-bold font-mono border bg-indigo-50 text-indigo-700 border-indigo-200">
+                      {report.target_role}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-mono text-slate-600 mt-4 max-w-xl mx-auto leading-relaxed">
                   {report.summary}
                 </p>
+                {report.score_breakdown && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 text-left">
+                    {([
+                      ["Content", report.score_breakdown.content],
+                      ["Impact", report.score_breakdown.impact],
+                      ["Structure", report.score_breakdown.structure],
+                      ["ATS", report.score_breakdown.ats],
+                    ] as [string, number][]).map(([label, value]) => (
+                      <div key={label} className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                        <p className="text-[10px] font-mono uppercase text-slate-400">{label}</p>
+                        <p className="text-sm font-black font-mono text-slate-800 mt-1">{value}<span className="text-slate-400">/25</span></p>
+                        <div className="h-1.5 bg-slate-200 rounded-full mt-2 overflow-hidden">
+                          <div
+                            className="h-full bg-purple-500 rounded-full"
+                            style={{ width: `${Math.min(100, (value / 25) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Skills */}
@@ -324,6 +381,9 @@ export default function CvReportPage() {
                   {report.skills_found.map((s) => (
                     <Chip key={s} label={s} color="bg-purple-50 text-purple-700 border-purple-200" />
                   ))}
+                  {report.skills_found.length === 0 && (
+                    <p className="text-xs font-mono text-slate-400">No skills were clearly listed on the CV.</p>
+                  )}
                 </div>
               </div>
 
@@ -390,6 +450,39 @@ export default function CvReportPage() {
                   ))}
                 </div>
               </div>
+
+              {report.missing_sections && report.missing_sections.length > 0 && (
+                <div className="bg-white border border-amber-100 rounded-3xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Layers className="w-4 h-4 text-amber-600" />
+                    <h3 className="text-sm font-bold font-mono text-slate-800">Missing Sections</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {report.missing_sections.map((section) => (
+                      <Chip key={section} label={section} color="bg-amber-50 text-amber-800 border-amber-200" />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {report.ats_tips && report.ats_tips.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-3xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <ScanSearch className="w-4 h-4 text-slate-700" />
+                    <h3 className="text-sm font-bold font-mono text-slate-800">ATS Tips</h3>
+                  </div>
+                  <ul className="space-y-2">
+                    {report.ats_tips.map((tip, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black font-mono flex items-center justify-center shrink-0 mt-0.5">
+                          {i + 1}
+                        </span>
+                        <span className="text-xs font-mono text-slate-600">{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Bottom Download */}
               <div className="pb-8">

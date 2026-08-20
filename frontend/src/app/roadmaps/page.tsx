@@ -18,7 +18,10 @@ import {
   Lock,
   ArrowRight,
   UserCheck,
-  GraduationCap
+  GraduationCap,
+  Link2,
+  Plus,
+  ExternalLink
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import confetti from "canvas-confetti";
@@ -58,6 +61,8 @@ function RoadmapContent() {
   // Selected task state for details panel
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [taskSubmissionText, setTaskSubmissionText] = useState("");
+  const [links, setLinks] = useState<string[]>([]);
+  const [newLink, setNewLink] = useState("");
 
   // Submissions history for the selected task
   const { data: taskSubmissions, refetch: refetchSubmissions } = useGetTaskSubmissionsQuery(
@@ -66,6 +71,8 @@ function RoadmapContent() {
       skip: !selectedTask,
     }
   );
+
+  const hasPendingSubmission = taskSubmissions?.some((sub: any) => sub.status === "pending_review");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -79,6 +86,9 @@ function RoadmapContent() {
   useEffect(() => {
     if (selectedTask) {
       refetchSubmissions();
+      setTaskSubmissionText("");
+      setLinks([]);
+      setNewLink("");
     }
   }, [selectedTask, refetchSubmissions]);
 
@@ -106,22 +116,45 @@ function RoadmapContent() {
       setSelectedTask(null);
       router.push("/dashboard");
     } catch (err: any) {
-      toast.error(err.data?.message || err.message || "Failed to abandon learning path.");
+      toast.error(err.data?.error || err.data?.message || err.message || "Failed to abandon learning path.");
     }
+  };
+
+  const handleAddLink = () => {
+    if (!newLink.trim()) return;
+    let url = newLink.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      url = "https://" + url;
+    }
+    setLinks((prev) => [...prev, url]);
+    setNewLink("");
+  };
+
+  const handleRemoveLink = (idx: number) => {
+    setLinks((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTask || !taskSubmissionText.trim()) return;
+    if (!selectedTask) return;
+    
+    const hasText = !!taskSubmissionText.trim();
+    const hasLinks = links.length > 0;
+    if (!hasText && !hasLinks) {
+      toast.error("Please provide submission content or links.");
+      return;
+    }
 
     try {
       await submitTask({
         taskId: selectedTask.id,
         content: taskSubmissionText,
+        links,
       }).unwrap();
 
       toast.success("Assignment submitted! Awaiting mentor review.");
       setTaskSubmissionText("");
+      setLinks([]);
       refetchRoadmap();
       refetchSubmissions();
       // Keep selectedTask open but update local task view details
@@ -130,7 +163,7 @@ function RoadmapContent() {
         status: "pending_review",
       }));
     } catch (err: any) {
-      toast.error(err.data?.message || err.message || "Failed to upload submission.");
+      toast.error(err.data?.error || err.data?.message || err.message || "Failed to upload submission.");
     }
   };
 
@@ -350,7 +383,24 @@ function RoadmapContent() {
                                     {sub.status.toUpperCase()}
                                   </span>
                                 </div>
-                                <p className="text-slate-600 break-all">{sub.content}</p>
+                                {sub.content && <p className="text-slate-600 break-all">{sub.content}</p>}
+                                {sub.links && sub.links.length > 0 && (
+                                  <div className="mt-1.5 space-y-1">
+                                    <span className="text-[8px] font-bold text-slate-400 block uppercase">Submitted Links</span>
+                                    {sub.links.map((link: string, idx: number) => (
+                                      <a
+                                        key={idx}
+                                        href={link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1 break-all text-[9px] font-medium"
+                                      >
+                                        <ExternalLink className="w-3 h-3 shrink-0" />
+                                        {link}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
                                 {sub.comment && (
                                   <div className="bg-slate-100 border border-slate-200 text-slate-500 p-1.5 rounded-md mt-1 italic text-[9px] leading-relaxed">
                                     Mentor: "{sub.comment}"
@@ -363,7 +413,25 @@ function RoadmapContent() {
                       )}
 
                       {/* Submission Upload */}
-                      {selectedTask.status !== "completed" && (
+                      {selectedTask.status !== "completed" && roadmapDetails?.status === "abandoned" && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl font-mono text-xs text-center space-y-2 mt-4 text-left">
+                          <p className="font-bold uppercase tracking-wider text-[10px]">Learning Path Inactive / Deleted</p>
+                          <p className="text-[10px] text-slate-500 leading-relaxed">
+                            This learning roadmap has been archived. Please resume it from your student dashboard to recontinue submitting task exercises.
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedTask.status !== "completed" && roadmapDetails?.status === "in_progress" && hasPendingSubmission && (
+                        <div className="bg-amber-50 border border-amber-250 text-amber-800 p-4 rounded-2xl font-mono text-xs text-center space-y-2 mt-4 text-left">
+                          <p className="font-bold uppercase tracking-wider text-[10px]">Awaiting Mentor Review</p>
+                          <p className="text-[10px] text-slate-500 leading-relaxed">
+                            You have already uploaded an exercise submission for this task. Please wait for your mentor to approve or reject your pending submission before uploading a new attempt.
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedTask.status !== "completed" && roadmapDetails?.status === "in_progress" && !hasPendingSubmission && (
                         <form onSubmit={handleTaskSubmit} className="space-y-3 pt-2 border-t border-purple-50">
                           <div className="space-y-1.5">
                             <label className="text-[10px] font-bold font-mono text-slate-500">
@@ -376,9 +444,61 @@ function RoadmapContent() {
                               className="w-full h-32 p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs resize-none placeholder:text-slate-400"
                             />
                           </div>
+
+                          {/* Links input and display */}
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold font-mono text-slate-500 block">
+                              Add Links (Optional)
+                            </label>
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                <Link2 className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input
+                                  type="text"
+                                  value={newLink}
+                                  onChange={(e) => setNewLink(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddLink();
+                                    }
+                                  }}
+                                  placeholder="https://github.com/..."
+                                  className="w-full pl-9 pr-3 py-2 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleAddLink}
+                                className="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-xl border border-purple-100 flex items-center justify-center cursor-pointer transition-colors"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
+                            {links.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {links.map((link, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between gap-2 p-2 border border-purple-50 rounded-xl bg-purple-50/5 text-[10px] font-mono"
+                                  >
+                                    <span className="truncate text-slate-600">{link}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveLink(idx)}
+                                      className="text-red-500 hover:text-red-700 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
                           <button
                             type="submit"
-                            disabled={isSubmittingTask || !taskSubmissionText.trim()}
+                            disabled={isSubmittingTask || (!taskSubmissionText.trim() && links.length === 0)}
                             className="w-full flex items-center justify-center gap-1.5 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-xs cursor-pointer disabled:bg-slate-350"
                           >
                             {isSubmittingTask ? (

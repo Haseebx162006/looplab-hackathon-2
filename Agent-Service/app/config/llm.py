@@ -8,13 +8,22 @@ logger = logging.getLogger("app")
 # Note: Groq model names change over time.
 # Check https://console.groq.com/docs/models if all fallbacks start failing.
 
-def call_llm_with_fallback(prompt: str, response_format: dict = None) -> str:
+def call_llm_with_fallback(
+    prompt: str,
+    response_format: dict = None,
+    temperature: float = None,
+    system_prompt: str = None,
+    max_tokens: int = 4096,
+) -> str:
     """
     Call LiteLLM completion with automatic model fallback and rate-limit retries.
     
     Args:
         prompt: The user prompt to send to the LLM.
         response_format: Optional response format (e.g. {"type": "json_object"}).
+        temperature: Optional sampling temperature.
+        system_prompt: Optional system message.
+        max_tokens: Max completion tokens.
     
     Returns:
         The LLM response content as a string.
@@ -43,14 +52,21 @@ def call_llm_with_fallback(prompt: str, response_format: dict = None) -> str:
         attempts = 2
         for attempt in range(attempts):
             try:
-                response = litellm.completion(
-                    model=model,
-                    messages=[{"role": "user", "content": prompt}],
-                    api_key=settings.GROQ_API_KEY,
-                    response_format=response_format,
-                    max_tokens=4096,
-                    drop_params=True
-                )
+                messages = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": prompt})
+                kwargs = {
+                    "model": model,
+                    "messages": messages,
+                    "api_key": settings.GROQ_API_KEY,
+                    "response_format": response_format,
+                    "max_tokens": max_tokens,
+                    "drop_params": True,
+                }
+                if temperature is not None:
+                    kwargs["temperature"] = temperature
+                response = litellm.completion(**kwargs)
                 return response.choices[0].message.content or "{}"
             except litellm.RateLimitError as e:
                 err_type = "rate_limit"

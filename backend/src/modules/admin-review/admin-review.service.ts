@@ -1,5 +1,6 @@
 import { pool } from '../../db/index.js';
 import { GoogleCalendarService } from './google-calendar.service.js';
+import { sendEmail } from '../../utils/mailer.js';
 
 export class AdminReviewService {
   static async reviewSubmission(adminId: string, submissionId: string, decision: 'approve' | 'reject', comment: string) {
@@ -10,11 +11,13 @@ export class AdminReviewService {
       // 1. Fetch submission with lock
       const subRes = await client.query(
         `SELECT s.id, s.task_id, s.user_id as student_id, s.status as submission_status,
-                t.section_id, t.title as task_title, r.id as roadmap_id, r.module_id
+                t.section_id, t.title as task_title, r.id as roadmap_id, r.module_id,
+                u.email as student_email, u.name as student_name
          FROM task_submissions s
          JOIN roadmap_tasks t ON s.task_id = t.id
          JOIN roadmap_sections sec ON t.section_id = sec.id
          JOIN roadmaps r ON sec.roadmap_id = r.id
+         JOIN users u ON s.user_id = u.id
          WHERE s.id = $1 FOR UPDATE`,
         [submissionId]
       );
@@ -116,6 +119,16 @@ export class AdminReviewService {
       }
 
       await client.query('COMMIT');
+
+      // Send email notification to the student
+      try {
+        const emailSubject = `Task Submission Review: ${decision === 'approve' ? 'Approved' : 'Action Required'}`;
+        const emailBody = `Hello ${submission.student_name},\n\nYour task submission has been reviewed by your mentor.\n\nDetails:\n- Task: ${submission.task_title}\n- Decision: ${decision === 'approve' ? 'Approved' : 'Action Required / Rejected'}\n- Comment/Feedback: ${comment || 'No comment provided.'}\n\nBest regards,\nPersonalized Learning Platform Team`;
+
+        await sendEmail(submission.student_email, emailSubject, emailBody);
+      } catch (emailErr: any) {
+        console.error('⚠️ Failed to send task review email notification:', emailErr.message || emailErr);
+      }
 
       return {
         submission_id: submissionId,

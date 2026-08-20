@@ -156,6 +156,92 @@ async def generate_test(payload: GenerateTestRequest):
         )
 
 
+def _as_str_list(value, limit: int = 16) -> list:
+    if isinstance(value, str):
+        items = [part.strip() for part in value.split(",") if part.strip()]
+    elif isinstance(value, list):
+        items = []
+        for item in value:
+            text = str(item).strip()
+            if text:
+                items.append(text)
+    else:
+        items = []
+    seen = set()
+    unique = []
+    for item in items:
+        key = item.lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    return unique[:limit]
+
+
+def _clamp_int(value, default: int, lo: int, hi: int) -> int:
+    try:
+        number = int(round(float(value)))
+    except (TypeError, ValueError):
+        number = default
+    return max(lo, min(hi, number))
+
+
+def normalize_cv_report(raw: dict) -> dict:
+    if not isinstance(raw, dict):
+        raw = {}
+
+    breakdown_raw = raw.get("score_breakdown") or {}
+    if not isinstance(breakdown_raw, dict):
+        breakdown_raw = {}
+
+    breakdown = {
+        "content": _clamp_int(breakdown_raw.get("content"), 15, 0, 25),
+        "impact": _clamp_int(breakdown_raw.get("impact"), 12, 0, 25),
+        "structure": _clamp_int(breakdown_raw.get("structure"), 15, 0, 25),
+        "ats": _clamp_int(breakdown_raw.get("ats"), 15, 0, 25),
+    }
+    overall = _clamp_int(raw.get("overall_score"), sum(breakdown.values()), 0, 100)
+    if abs(overall - sum(breakdown.values())) > 8:
+        overall = sum(breakdown.values())
+
+    level = str(raw.get("experience_level") or "Junior").strip()
+    allowed_levels = {"Intern", "Junior", "Mid-level", "Senior", "Lead"}
+    if level not in allowed_levels:
+        lowered = level.lower().replace("_", " ").replace("-", " ")
+        mapping = {
+            "intern": "Intern",
+            "entry": "Junior",
+            "entry level": "Junior",
+            "junior": "Junior",
+            "mid": "Mid-level",
+            "mid level": "Mid-level",
+            "intermediate": "Mid-level",
+            "senior": "Senior",
+            "lead": "Lead",
+            "principal": "Lead",
+        }
+        level = mapping.get(lowered, "Junior")
+
+    summary = str(raw.get("summary") or "").strip()
+    if len(summary) < 40:
+        summary = "The CV was reviewed, but the extracted content was too limited for a deep summary. Re-upload a text-based PDF and analyze again."
+
+    return {
+        "candidate_name": str(raw.get("candidate_name") or "Unknown").strip() or "Unknown",
+        "target_role": str(raw.get("target_role") or "").strip(),
+        "overall_score": overall,
+        "score_breakdown": breakdown,
+        "summary": summary,
+        "skills_found": _as_str_list(raw.get("skills_found"), 16),
+        "missing_sections": _as_str_list(raw.get("missing_sections"), 8),
+        "strengths": _as_str_list(raw.get("strengths"), 6),
+        "weaknesses": _as_str_list(raw.get("weaknesses"), 6),
+        "recommendations": _as_str_list(raw.get("recommendations"), 6),
+        "ats_tips": _as_str_list(raw.get("ats_tips"), 6),
+        "experience_level": level,
+        "suitable_roles": _as_str_list(raw.get("suitable_roles"), 6),
+    }
+
+
 def extract_text_from_cv(cv_url: str) -> str:
     """Downloads CV from URL and extracts plain text using pdfplumber for PDFs."""
     import requests as req
@@ -235,34 +321,90 @@ def analyze_cv(payload: dict):
     if not cv_text or len(cv_text) < 50:
         raise HTTPException(status_code=422, detail="CV text is too short to analyze. Please ensure the file contains readable content.")
 
-    # Truncate to stay within token limits
-    cv_snippet = cv_text[:3000]
+    cv_snippet = cv_text[:12000]
 
-    prompt = f"""You are an expert career coach and CV reviewer. Analyze the following CV text and return a structured JSON report.
+    system_prompt = (
+        "You are a senior technical recruiter and certified professional resume writer. "
+        "You write specific, evidence-based CV reviews. You never invent employers, dates, "
+        "skills, or achievements that are not in the CV. You do not give generic advice."
+    )
+
+    prompt = f"""Analyze this CV and return ONLY valid JSON.
 
 CV TEXT:
+\"\"\"
 {cv_snippet}
+\"\"\"
 
-Return ONLY a JSON object with this exact structure (no extra text, no markdown):
+Scoring rubric (integers). Each category is 0-25. overall_score MUST equal their sum (0-100):
+- content: relevance of skills, education, and experience to a real job search
+- impact: quantified achievements vs vague duty lists
+- structure: clear sections, dates, contact info, readable layout signals
+- ats: keywords, standard headings, parseable bullets, no missing contact/dates
+
+Honest scoring:
+- Student / intern CVs typically 42-68
+- Junior with some projects 55-75
+- Strong mid-level 70-85
+- Do not inflate scores. A duty-only CV with no metrics should not exceed 62.
+
+Rules:
+- Use only facts present in the CV.
+- strengths, weaknesses, and recommendations must name specific evidence from this CV (project names, tools, missing numbers, missing sections).
+- recommendations must be actionable rewrite-style advice, not "network more" or "keep learning".
+- skills_found: only skills actually written on the CV, max 16, proper casing, no duplicates.
+- missing_sections: real resume sections that are absent (e.g. "Professional Experience", "Quantified achievements", "Contact email").
+- experience_level: one of Intern, Junior, Mid-level, Senior, Lead.
+- suitable_roles: 3-5 realistic titles matching THIS background, not dream jobs.
+- target_role: best-fit role title based on the CV.
+
+Return this exact JSON shape:
 {{
-  "candidate_name": "extracted name or Unknown",
-  "overall_score": 75,
-  "summary": "2-3 sentence professional summary of the candidate",
-  "skills_found": ["skill1", "skill2", "skill3"],
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "weaknesses": ["weakness 1", "weakness 2"],
-  "recommendations": ["recommendation 1", "recommendation 2", "recommendation 3"],
-  "experience_level": "Junior | Mid-level | Senior",
-  "suitable_roles": ["role 1", "role 2", "role 3"]
-}}
-overall_score must be an integer between 0-100 based on CV quality."""
+  "candidate_name": "Name or Unknown",
+  "target_role": "Best-fit role title",
+  "overall_score": 64,
+  "score_breakdown": {{
+    "content": 16,
+    "impact": 12,
+    "structure": 18,
+    "ats": 18
+  }},
+  "summary": "3-4 sentences: who they are, strongest evidence, biggest CV gap, and fit.",
+  "skills_found": ["Skill 1", "Skill 2"],
+  "missing_sections": ["section that is actually missing"],
+  "strengths": [
+    "Specific strength citing evidence from the CV",
+    "Specific strength citing evidence from the CV",
+    "Specific strength citing evidence from the CV"
+  ],
+  "weaknesses": [
+    "Specific weakness citing what is missing or weak in THIS CV",
+    "Specific weakness citing what is missing or weak in THIS CV",
+    "Specific weakness citing what is missing or weak in THIS CV"
+  ],
+  "recommendations": [
+    "Actionable rewrite: what to change and an example of a stronger bullet",
+    "Actionable rewrite: what to add (section, metric, project detail)",
+    "Actionable ATS/keyword fix tied to the target role",
+    "Actionable formatting or ordering fix"
+  ],
+  "ats_tips": [
+    "Concrete ATS fix for this CV",
+    "Concrete ATS fix for this CV"
+  ],
+  "experience_level": "Junior",
+  "suitable_roles": ["Role 1", "Role 2", "Role 3"]
+}}"""
 
     try:
         raw_output = call_llm_with_fallback(
             prompt,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            temperature=0.2,
+            system_prompt=system_prompt,
+            max_tokens=4096,
         )
-        report = parse_and_clean_json(raw_output)
+        report = normalize_cv_report(parse_and_clean_json(raw_output))
         return {"report": report}
     except HTTPException:
         raise

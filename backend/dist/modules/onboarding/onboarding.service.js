@@ -14,7 +14,7 @@ export class OnboardingService {
         experience = EXCLUDED.experience,
         cv_url = COALESCE(EXCLUDED.cv_url, profiles.cv_url),
         profile_complete = true
-      RETURNING *;
+      RETURNING id, user_id, education, skills, interests, career_goal, experience, profile_complete, cv_url;
     `;
         const res = await pool.query(query, [
             userId,
@@ -28,7 +28,8 @@ export class OnboardingService {
         return res.rows[0];
     }
     static async getProfileByUserId(userId) {
-        const res = await pool.query('SELECT * FROM profiles WHERE user_id = $1', [userId]);
+        const res = await pool.query(`SELECT id, user_id, education, skills, interests, career_goal, experience, profile_complete, cv_url
+       FROM profiles WHERE user_id = $1`, [userId]);
         return res.rows[0] || null;
     }
 }

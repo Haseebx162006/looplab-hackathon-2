@@ -82,3 +82,50 @@ export async function sendOTPEmail(email: string, otp: string, expiresMinutes: n
     return false;
   }
 }
+
+export async function sendEmail(email: string, subject: string, body: string): Promise<boolean> {
+  const client = getGmailClient();
+
+  if (!client) {
+    console.log(`\n-----------------------------------------`);
+    console.log(`✉️  [MOCK EMAIL] To: ${email}`);
+    console.log(`✉️  Subject: ${subject}`);
+    console.log(`✉️  Body: ${body}`);
+    console.log(`-----------------------------------------\n`);
+    return true;
+  }
+
+  try {
+    const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+    const messageParts = [
+      `From: ${GMAIL_USER_EMAIL}`,
+      `To: ${email}`,
+      'Content-Type: text/plain; charset=utf-8',
+      'MIME-Version: 1.0',
+      `Subject: ${utf8Subject}`,
+      '',
+      body,
+    ];
+    const message = messageParts.join('\r\n');
+
+    const encodedMessage = Buffer.from(message)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    await client.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedMessage,
+      },
+    });
+
+    console.log(`✅ Email successfully sent to ${email} via Gmail API.`);
+    return true;
+  } catch (error: any) {
+    console.error(`❌ Failed to send email via Gmail API:`, error.message);
+    console.log(`✉️  [FALLBACK] Email for ${email}: Subject: ${subject}, Body: ${body}`);
+    return false;
+  }
+}

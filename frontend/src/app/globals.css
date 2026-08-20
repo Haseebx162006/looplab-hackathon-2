@@ -13,15 +13,32 @@
   --font-syne: 'Syne', sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: #F5F2FA;
   color: #0F172A;
   font-family: 'Outfit', 'Syne', sans-serif;
   overflow-x: hidden;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
 }
 
-body::-webkit-scrollbar, html::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+/* Modern clean scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c084fc; /* purple-400 */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a855f7; /* purple-500 */
 }

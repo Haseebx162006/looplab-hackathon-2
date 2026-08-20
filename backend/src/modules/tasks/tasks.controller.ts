@@ -11,12 +11,12 @@ export class TasksController {
       }
 
       const { id } = req.params;
-      const { content } = req.body;
-      if (!content) {
-        return res.status(400).json({ error: 'content is required.' });
+      const { content, links } = req.body;
+      if (!content && (!links || links.length === 0)) {
+        return res.status(400).json({ error: 'content or links are required.' });
       }
 
-      const submission = await TasksService.submitTask(userId, id, content);
+      const submission = await TasksService.submitTask(userId, id, content, links);
       res.status(201).json({
         message: 'Task submitted successfully. Pending mentor review.',
         submission,

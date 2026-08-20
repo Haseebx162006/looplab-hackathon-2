@@ -31,6 +31,8 @@ import {
   useGenerateSkillSummaryMutation,
   useGenerateRoadmapMutation,
   useGetTestHistoryQuery,
+  useGenerateTestMutation,
+  useGetModulesQuery,
 } from "@/store/api/learningApi";
 
 function AssessmentContent() {
@@ -46,6 +48,13 @@ function AssessmentContent() {
   const { data: historyData, isLoading: isHistoryLoading } = useGetTestHistoryQuery(undefined, {
     skip: !!testId,
   });
+
+  const { data: modules } = useGetModulesQuery();
+  const [generateTest, { isLoading: isGeneratingTest }] = useGenerateTestMutation();
+
+  const [showRetakeForm, setShowRetakeForm] = useState(false);
+  const [selectedModuleId, setSelectedModuleId] = useState("");
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
 
   const [submitTest, { isLoading: isSubmittingTest }] = useSubmitTestMutation();
   const [generateSummary, { isLoading: isGeneratingSummary }] = useGenerateSkillSummaryMutation();
@@ -71,6 +80,27 @@ function AssessmentContent() {
       ...prev,
       [questionId]: option,
     }));
+  };
+
+  const handleStartPath = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedModuleId) {
+      toast.error("Please select a learning module.");
+      return;
+    }
+
+    try {
+      const testSession = await generateTest({
+        module_id: selectedModuleId,
+        difficulty
+      }).unwrap();
+
+      toast.success("Diagnostic assessment ready! Launching diagnostic test...");
+      setShowRetakeForm(false);
+      router.push(`/assessments?test_id=${testSession.test_id}`);
+    } catch (err: any) {
+      toast.error(err.data?.message || err.message || "Failed to start assessment.");
+    }
   };
 
   const handleSubmit = async () => {
@@ -175,17 +205,101 @@ function AssessmentContent() {
         <Toaster position="top-right" />
         <main className="flex-1 ml-20 p-6 md:p-10 max-w-4xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-[10px] font-extrabold font-mono rounded-full border border-purple-200 uppercase">
-              SKILL DIAGNOSTICS
-            </span>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-mono text-slate-900 mt-3">
-              Test Reports
-            </h1>
-            <p className="text-xs text-slate-500 font-mono mt-1">
-              A complete record of your diagnostic assessments and performance.
-            </p>
+          <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-[10px] font-extrabold font-mono rounded-full border border-purple-200 uppercase">
+                SKILL DIAGNOSTICS
+              </span>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-mono text-slate-900 mt-3">
+                Test Reports
+              </h1>
+              <p className="text-xs text-slate-500 font-mono mt-1">
+                A complete record of your diagnostic assessments and performance.
+              </p>
+            </div>
+            {!showRetakeForm && (
+              <button
+                onClick={() => setShowRetakeForm(true)}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+              >
+                <Sparkles className="w-4 h-4 animate-pulse" /> Retake Assessment
+              </button>
+            )}
           </div>
+
+          {/* Retake Assessment Form Card */}
+          {showRetakeForm && (
+            <div className="bg-white border border-purple-100 rounded-3xl p-6 md:p-8 shadow-xs mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-50 rounded-xl text-purple-600">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-lg font-bold font-mono">Retake Skill Diagnostics</h2>
+                </div>
+                <button
+                  onClick={() => setShowRetakeForm(false)}
+                  className="px-3 py-1.5 text-slate-400 hover:text-slate-650 text-xs font-mono border border-slate-250 rounded-lg hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <form onSubmit={handleStartPath} className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-650 font-mono">Choose Course Domain</label>
+                  <select
+                    value={selectedModuleId}
+                    onChange={(e) => setSelectedModuleId(e.target.value)}
+                    className="w-full p-4 border border-purple-100 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs bg-purple-50/5 cursor-pointer text-slate-700 font-semibold"
+                  >
+                    <option value="">-- Select Module --</option>
+                    {modules?.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-650 font-mono">Self-Rated Difficulty</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(["easy", "medium", "hard"] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setDifficulty(level)}
+                        className={`p-3 rounded-2xl font-mono text-xs capitalize font-semibold border transition-all cursor-pointer ${
+                          difficulty === level
+                            ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                            : "bg-white text-slate-650 border-purple-50 hover:border-purple-200"
+                        }`}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isGeneratingTest}
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-mono text-xs font-bold transition-all shadow-xs cursor-pointer disabled:bg-slate-350"
+                >
+                  {isGeneratingTest ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Synthesizing test queries...
+                    </>
+                  ) : (
+                    <>
+                      Begin Diagnostics Retake <ChevronRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* Stats Row */}
           {!isHistoryLoading && history.length > 0 && (

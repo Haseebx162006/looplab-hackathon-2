@@ -1,8 +1,8 @@
 import { pool } from '../../db/index.js';
 export class TasksService {
-    static async submitTask(userId, taskId, content) {
-        if (!content || content.trim() === '') {
-            throw { status: 400, message: 'Submission content cannot be empty.' };
+    static async submitTask(userId, taskId, content, links) {
+        if ((!content || content.trim() === '') && (!links || links.length === 0)) {
+            throw { status: 400, message: 'Submission content or links must be provided.' };
         }
         // 1. Ownership & Existence Check
         const taskCheck = await pool.query(`SELECT t.id, r.user_id, t.status, r.status as roadmap_status
@@ -29,9 +29,9 @@ export class TasksService {
         const dbClient = await pool.connect();
         try {
             await dbClient.query('BEGIN');
-            const submissionRes = await dbClient.query(`INSERT INTO task_submissions (task_id, user_id, content, status)
-         VALUES ($1, $2, $3, 'pending_review')
-         RETURNING *`, [taskId, userId, content]);
+            const submissionRes = await dbClient.query(`INSERT INTO task_submissions (task_id, user_id, content, status, links)
+         VALUES ($1, $2, $3, 'pending_review', $4)
+         RETURNING *`, [taskId, userId, content || '', links || []]);
             const submission = submissionRes.rows[0];
             if (taskInfo.status === 'not_started') {
                 await dbClient.query("UPDATE roadmap_tasks SET status = 'in_progress' WHERE id = $1", [taskId]);

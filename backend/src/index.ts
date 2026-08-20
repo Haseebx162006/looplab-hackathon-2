@@ -17,6 +17,7 @@ import adminReviewRoutes from './modules/admin-review/admin-review.routes.js';
 import certificatesRoutes from './modules/certificates/certificates.routes.js';
 import progressRoutes from './modules/progress/progress.routes.js';
 import cvAnalyzeRoutes from './modules/cv-analyze/cv-analyze.routes.js';
+import bookingRoutes from './modules/booking/booking.routes.js';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/admin', adminReviewRoutes);
 app.use('/certificates', certificatesRoutes);
 app.use('/users', progressRoutes);
 app.use('/cv', cvAnalyzeRoutes);
+app.use('/booking', bookingRoutes);
 
 // Root route
 app.get('/', (_req, res) => {

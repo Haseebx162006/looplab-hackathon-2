@@ -1,9 +1,9 @@
 import { pool } from '../../db/index.js';
 
 export class TasksService {
-  static async submitTask(userId: string, taskId: string, content: string) {
-    if (!content || content.trim() === '') {
-      throw { status: 400, message: 'Submission content cannot be empty.' };
+  static async submitTask(userId: string, taskId: string, content: string, links?: string[]) {
+    if ((!content || content.trim() === '') && (!links || links.length === 0)) {
+      throw { status: 400, message: 'Submission content or links must be provided.' };
     }
 
     // 1. Ownership & Existence Check
@@ -44,10 +44,10 @@ export class TasksService {
       await dbClient.query('BEGIN');
 
       const submissionRes = await dbClient.query(
-        `INSERT INTO task_submissions (task_id, user_id, content, status)
-         VALUES ($1, $2, $3, 'pending_review')
+        `INSERT INTO task_submissions (task_id, user_id, content, status, links)
+         VALUES ($1, $2, $3, 'pending_review', $4)
          RETURNING *`,
-        [taskId, userId, content]
+        [taskId, userId, content || '', links || []]
       );
       const submission = submissionRes.rows[0];
 

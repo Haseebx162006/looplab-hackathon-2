@@ -82,6 +82,7 @@ export interface Submission {
   task_id: string;
   user_id: string;
   content: string;
+  links?: string[];
   status: 'pending_review' | 'approved' | 'rejected';
   created_at: string;
 }
@@ -124,14 +125,25 @@ export interface TestHistoryItem {
   created_at: string;
 }
 
+export interface CvScoreBreakdown {
+  content: number;
+  impact: number;
+  structure: number;
+  ats: number;
+}
+
 export interface CvReport {
   candidate_name: string;
+  target_role?: string;
   overall_score: number;
+  score_breakdown?: CvScoreBreakdown;
   summary: string;
   skills_found: string[];
+  missing_sections?: string[];
   strengths: string[];
   weaknesses: string[];
   recommendations: string[];
+  ats_tips?: string[];
   experience_level: string;
   suitable_roles: string[];
 }
@@ -148,7 +160,7 @@ export const learningApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Profile", "Modules", "Tests", "Roadmaps", "Submissions", "Progress", "Certificates"],
+  tagTypes: ["Profile", "Modules", "Tests", "Roadmaps", "Submissions", "Progress", "Certificates", "Bookings"],
   endpoints: (builder) => ({
     getModules: builder.query<Module[], void>({
       query: () => "/modules",
@@ -220,11 +232,11 @@ export const learningApi = createApi({
       }),
       invalidatesTags: ["Roadmaps", "Progress"],
     }),
-    submitTask: builder.mutation<{ message: string; submission: Submission }, { taskId: string; content: string }>({
-      query: ({ taskId, content }) => ({
+    submitTask: builder.mutation<{ message: string; submission: Submission }, { taskId: string; content: string; links?: string[] }>({
+      query: ({ taskId, content, links }) => ({
         url: `/tasks/${taskId}/submit`,
         method: "POST",
-        body: { content },
+        body: { content, links },
       }),
       invalidatesTags: ["Submissions", "Roadmaps", "Progress"],
     }),
@@ -290,6 +302,37 @@ export const learningApi = createApi({
         body,
       }),
     }),
+    resumeRoadmap: builder.mutation<any, string>({
+      query: (id) => ({
+        url: `/roadmaps/${id}/resume`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Roadmaps", "Progress"],
+    }),
+    createBookingRequest: builder.mutation<any, { title: string; description?: string }>({
+      query: (body) => ({
+        url: "/booking/requests",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Bookings"],
+    }),
+    getUserBookingRequests: builder.query<any[], void>({
+      query: () => "/booking/requests",
+      providesTags: ["Bookings"],
+    }),
+    getAdminBookingRequests: builder.query<any[], void>({
+      query: () => "/booking/admin/requests",
+      providesTags: ["Bookings"],
+    }),
+    respondToBookingRequest: builder.mutation<any, { requestId: string; decision: 'approve' | 'reject'; scheduledAt?: string; durationMinutes?: number; comment?: string }>({
+      query: ({ requestId, ...body }) => ({
+        url: `/booking/admin/requests/${requestId}/respond`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Bookings"],
+    }),
   }),
 });
 
@@ -318,4 +361,9 @@ export const {
   useBookMentorCallMutation,
   useAnalyzeCvMutation,
   useUploadCvMutation,
+  useResumeRoadmapMutation,
+  useCreateBookingRequestMutation,
+  useGetUserBookingRequestsQuery,
+  useGetAdminBookingRequestsQuery,
+  useRespondToBookingRequestMutation,
 } = learningApi;

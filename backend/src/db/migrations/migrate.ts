@@ -322,6 +322,7 @@ export const sqlMigrations = [
         task_id UUID NOT NULL REFERENCES roadmap_tasks(id) ON DELETE CASCADE,
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         content TEXT NOT NULL,
+        links TEXT[] DEFAULT '{}',
         status VARCHAR(50) NOT NULL DEFAULT 'pending_review',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -366,6 +367,28 @@ export const sqlMigrations = [
     name: '011_add_cv_text_to_profiles',
     sql: `
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cv_text TEXT;
+    `,
+  },
+  {
+    name: '012_add_links_to_task_submissions',
+    sql: `
+      ALTER TABLE task_submissions ADD COLUMN IF NOT EXISTS links TEXT[] DEFAULT '{}';
+    `,
+  },
+  {
+    name: '013_create_mentor_call_requests',
+    sql: `
+      CREATE TABLE IF NOT EXISTS mentor_call_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        meet_link TEXT,
+        scheduled_at TIMESTAMP WITH TIME ZONE,
+        comment TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
     `,
   },
 ];

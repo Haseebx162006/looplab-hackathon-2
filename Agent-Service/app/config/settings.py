@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
-    GROQ_MODELS: str = "groq/openai/gpt-oss-120b,groq/openai/gpt-oss-20b,groq/qwen/qwen3.6-27b"
+    GROQ_MODELS: str = "groq/openai/gpt-oss-20b,groq/openai/gpt-oss-120b,groq/qwen/qwen3.6-27b"
     PORT: int = 8000
     HOST: str = "0.0.0.0"
     NODE_ENV: str = "production"

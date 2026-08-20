@@ -1,4 +1,5 @@
 import json
+import logging
 try:
     from crewai.tools import tool
 except ImportError:
@@ -6,8 +7,9 @@ except ImportError:
         def decorator(func):
             return func
         return decorator
-import litellm
 from app.config.settings import settings
+
+logger = logging.getLogger("app")
 
 @tool("Create Roadmap")
 def create_roadmap(skill_gap: str, career_goal: str) -> str:
@@ -53,13 +55,16 @@ def create_roadmap(skill_gap: str, career_goal: str) -> str:
       ]
     }}
     """
-    try:
-        response = litellm.completion(
-            model="groq/groq/compound-mini",
-            messages=[{"role": "user", "content": prompt}],
-            api_key=settings.GROQ_API_KEY,
-            response_format={"type": "json_object"}
+    
+    # Token estimation check
+    estimated_tokens = len(prompt) // 4
+    if estimated_tokens > 5000:
+        logger.warning(
+            f"Estimated request size ({estimated_tokens} tokens) is close to the Groq TPM limit (8,000 / 12,000)."
         )
-        return response.choices[0].message.content or "{}"
+        
+    try:
+        from app.config.llm import call_llm_with_fallback
+        return call_llm_with_fallback(prompt, response_format={"type": "json_object"})
     except Exception as e:
         return json.dumps({"error": f"Failed to create roadmap: {str(e)}"})

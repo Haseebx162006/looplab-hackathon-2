@@ -74,18 +74,37 @@ def parse_and_clean_json(raw_text: str) -> dict:
                 detail=f"Agent returned invalid JSON formatting: {str(e)}"
             )
 
+def normalize_skill_levels(skill_levels: dict) -> dict:
+    if not isinstance(skill_levels, dict):
+        return {}
+    normalized = {}
+    mapping = {
+        1: "Beginner",
+        2: "Intermediate",
+        3: "Advanced",
+        "1": "Beginner",
+        "2": "Intermediate",
+        "3": "Advanced"
+    }
+    for skill, val in skill_levels.items():
+        if val in mapping:
+            normalized[skill] = mapping[val]
+        else:
+            normalized[skill] = str(val)
+    return normalized
+
 @router.post("/analyze-skills", response_model=SkillProfileResponse, status_code=status.HTTP_200_OK)
 def analyze_skills(payload: AnalyzeSkillsRequest):
     try:
-        # Convert Pydantic request models to string/json representation for CrewAI tasks
         profile_str = payload.student_profile.model_dump_json()
         assessments_str = json.dumps([item.model_dump() for item in payload.assessment_results])
         
-        # Kick off crew
         raw_output = run_skill_analysis_crew(profile_str, assessments_str)
         
-        # Parse and return
         parsed_json = parse_and_clean_json(raw_output)
+        if "skill_levels" in parsed_json:
+            parsed_json["skill_levels"] = normalize_skill_levels(parsed_json["skill_levels"])
+            
         return SkillProfileResponse(**parsed_json)
         
     except HTTPException:
@@ -100,15 +119,15 @@ def analyze_skills(payload: AnalyzeSkillsRequest):
 @router.post("/generate-roadmap", response_model=RoadmapResponse, status_code=status.HTTP_200_OK)
 def generate_roadmap(payload: GenerateRoadmapRequest):
     try:
-        # Convert models to JSON strings for tools/tasks
         profile_str = payload.student_profile.model_dump_json()
         assessments_str = json.dumps([item.model_dump() for item in payload.assessment_results])
         
-        # Kick off crew
         raw_output = run_roadmap_crew(profile_str, assessments_str, payload.career_goal)
         
-        # Parse and return
         parsed_json = parse_and_clean_json(raw_output)
+        if "skill_profile" in parsed_json and "skill_levels" in parsed_json["skill_profile"]:
+            parsed_json["skill_profile"]["skill_levels"] = normalize_skill_levels(parsed_json["skill_profile"]["skill_levels"])
+            
         return RoadmapResponse(**parsed_json)
         
     except HTTPException:

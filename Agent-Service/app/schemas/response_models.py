@@ -23,3 +23,11 @@ class RoadmapResponse(BaseModel):
     skill_profile: SkillProfileResponse
     career_goal: str = Field(..., description="Target career goal")
     modules: List[RoadmapModule] = Field(..., description="List of structured roadmap modules")
+
+class TestQuestion(BaseModel):
+    question: str = Field(..., description="The test question text")
+    options: List[str] = Field(..., description="Four multiple-choice options")
+    correct_answer: str = Field(..., description="The exact correct option string")
+
+class TestQuestionsResponse(BaseModel):
+    questions: List[TestQuestion] = Field(..., description="List of generated questions")

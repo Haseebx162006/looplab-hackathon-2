@@ -19,3 +19,7 @@ class GenerateRoadmapRequest(BaseModel):
     student_profile: StudentProfile
     assessment_results: List[AssessmentResult]
     career_goal: str = Field(..., description="The target career role (e.g. Fullstack Developer)")
+
+class GenerateTestRequest(BaseModel):
+    module: str = Field(..., description="Module/domain name (e.g. AI Engineering)")
+    difficulty: str = Field(..., description="Difficulty level (easy, medium, or hard)")

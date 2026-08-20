@@ -25,7 +25,7 @@ export const pool = (() => {
     return connectionString
         ? new pg.Pool({
             connectionString,
-            connectionTimeoutMillis: 5000,
+            connectionTimeoutMillis: 30000,
             ssl: connectionString.includes('supabase') ? { rejectUnauthorized: false } : undefined
         })
         : new pg.Pool({
@@ -34,7 +34,7 @@ export const pool = (() => {
             database: config.db.database,
             user: config.db.user,
             password: config.db.password,
-            connectionTimeoutMillis: 5000,
+            connectionTimeoutMillis: 30000,
         });
 })();
 export async function initDatabase() {

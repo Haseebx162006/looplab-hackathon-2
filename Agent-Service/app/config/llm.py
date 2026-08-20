@@ -16,11 +16,13 @@ class FallbackLLM(LLM):
     def __new__(cls, models: list, **kwargs):
         if not models:
             raise ValueError("models list cannot be empty")
-        # Strip models out and call the parent constructor with the first model
+        # Call the parent constructor with the first model
         instance = super().__new__(cls, model=models[0], **kwargs)
         return instance
 
     def __init__(self, models: list, **kwargs):
+        # Initialize parent Pydantic BaseModel fields (like stop, temperature, etc.)
+        super().__init__(model=models[0], **kwargs)
         # Set private state variables bypassing Pydantic attributes check
         object.__setattr__(self, "_models_list", models)
         object.__setattr__(self, "_current_model_idx", 0)

@@ -29,12 +29,8 @@ if HAS_CREWAI:
         drop_params=True,
         additional_drop_params=["cache_breakpoint"],
         fallbacks=[
-            "groq/openai/gpt-oss-120b",
-            "groq/openai/gpt-oss-20b",
-            "groq/llama-3.1-8b-instant",
-            "groq/qwen/qwen3.6-27b",
-            "groq/groq/compound",
-            "groq/groq/compound-mini"
+            "groq/llama-3.1-70b-versatile",
+            "groq/llama-3.1-8b-instant"
         ]
     )
 

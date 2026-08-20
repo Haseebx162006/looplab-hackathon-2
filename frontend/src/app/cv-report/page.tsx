@@ -71,11 +71,41 @@ function Chip({ label, color }: { label: string; color: string }) {
 async function downloadReportPdf(report: CvReport, cvUrl: string) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  doc.setCharSpace(0); // Force standard character spacing to prevent letter-separation bugs
 
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 18;
   const colW = pageW - margin * 2;
   let y = 26;
+
+  // Sanitizes text to remove high Unicode characters that break standard font metrics
+  const cleanText = (str: string): string => {
+    if (!str) return "";
+    return str
+      .replace(/[\u2018\u2019]/g, "'")   // Smart single quotes
+      .replace(/[\u201C\u201D]/g, '"')   // Smart double quotes
+      .replace(/[\u2013\u2014]/g, "-")   // En/Em dashes
+      .replace(/\u2022/g, "-")           // Bullet points
+      .replace(/\u00B7/g, "-")           // Middle dot
+      .replace(/[^\x00-\xFF]/g, "");     // Strip characters outside Latin-1
+  };
+
+  const cleanArray = (arr: string[]): string[] => {
+    return (arr || []).map(item => cleanText(item));
+  };
+
+  // Clean data inputs
+  const candidateName = cleanText(report.candidate_name || "Candidate");
+  const expLevel = cleanText(report.experience_level);
+  const targetRole = cleanText(report.target_role || "");
+  const summary = cleanText(report.summary);
+  const skillsFound = cleanArray(report.skills_found);
+  const strengths = cleanArray(report.strengths);
+  const weaknesses = cleanArray(report.weaknesses);
+  const recommendations = cleanArray(report.recommendations);
+  const suitableRoles = cleanArray(report.suitable_roles);
+  const missingSections = cleanArray(report.missing_sections || []);
+  const atsTips = cleanArray(report.ats_tips || []);
 
   // Reusable helper to add paragraphs with auto page wrapping and indentation support
   const addParagraph = (
@@ -154,7 +184,7 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
       addParagraph("None identified.", 9, false, [120, 120, 120]);
       return;
     }
-    const joined = tags.join("   •   ");
+    const joined = tags.join("   |   "); // Use standard ASCII vertical bar "|" instead of bullet "•"
     addParagraph(joined, 9.5, false, tagColor);
   };
 
@@ -168,20 +198,20 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(30, 30, 30);
-  doc.text(report.candidate_name || "Candidate", margin + 6, y + 10);
+  doc.text(candidateName, margin + 6, y + 10);
 
   // Target role & experience
   doc.setFontSize(9.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 100, 100);
-  const roleText = `${report.experience_level}${report.target_role ? `  |  Target: ${report.target_role}` : ""}`;
+  const roleText = `${expLevel}${targetRole ? `  |  Target: ${targetRole}` : ""}`;
   doc.text(roleText, margin + 6, y + 15);
 
   // Short candidate summary inside card
   doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);
   const summaryW = colW - 54;
-  const summaryLines = doc.splitTextToSize(report.summary || "", summaryW);
+  const summaryLines = doc.splitTextToSize(summary, summaryW);
   let summaryY = y + 21;
   summaryLines.slice(0, 5).forEach((line: string) => {
     doc.text(line, margin + 6, summaryY);
@@ -261,34 +291,34 @@ async function downloadReportPdf(report: CvReport, cvUrl: string) {
   // --- 2. Sections ---
   // Skills Identified
   addSectionHeader("Skills Identified", [88, 28, 135]);
-  addTagsList(report.skills_found, [88, 28, 135]);
+  addTagsList(skillsFound, [88, 28, 135]);
 
   // Strengths
   addSectionHeader("Key Strengths", [16, 185, 129]);
-  addBulletPoints(report.strengths, [70, 70, 70], [16, 185, 129]);
+  addBulletPoints(strengths, [70, 70, 70], [16, 185, 129]);
 
   // Areas to Improve
   addSectionHeader("Areas for Improvement", [245, 158, 11]);
-  addBulletPoints(report.weaknesses, [70, 70, 70], [245, 158, 11]);
+  addBulletPoints(weaknesses, [70, 70, 70], [245, 158, 11]);
 
   // Recommendations
   addSectionHeader("Actionable Recommendations", [59, 130, 246]);
-  addBulletPoints(report.recommendations, [70, 70, 70], [59, 130, 246]);
+  addBulletPoints(recommendations, [70, 70, 70], [59, 130, 246]);
 
   // Suitable Roles
   addSectionHeader("Suitable Roles", [79, 70, 229]);
-  addTagsList(report.suitable_roles, [79, 70, 229]);
+  addTagsList(suitableRoles, [79, 70, 229]);
 
   // Missing Sections
-  if (report.missing_sections && report.missing_sections.length > 0) {
+  if (missingSections && missingSections.length > 0) {
     addSectionHeader("Missing CV Sections", [239, 68, 68]);
-    addTagsList(report.missing_sections, [239, 68, 68]);
+    addTagsList(missingSections, [239, 68, 68]);
   }
 
   // ATS Tips
-  if (report.ats_tips && report.ats_tips.length > 0) {
+  if (atsTips && atsTips.length > 0) {
     addSectionHeader("ATS Strategy Tips", [71, 85, 105]);
-    addBulletPoints(report.ats_tips, [70, 70, 70], [71, 85, 105]);
+    addBulletPoints(atsTips, [70, 70, 70], [71, 85, 105]);
   }
 
   // --- 3. Dynamic Header & Footer Pass ---
@@ -374,7 +404,7 @@ export default function CvReportPage() {
       <HoverSidebar />
       <Toaster position="top-right" />
 
-      <main className="flex-1 ml-20 p-6 md:p-10 max-w-3xl mx-auto">
+      <main className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button

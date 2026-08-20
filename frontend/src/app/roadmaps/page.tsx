@@ -171,7 +171,7 @@ function RoadmapContent() {
     return (
       <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
         <HoverSidebar />
-        <main className="flex-1 ml-20 p-10 flex flex-col justify-center items-center">
+        <main className="flex-1 ml-0 md:ml-20 p-10 pt-24 md:pt-10 flex flex-col justify-center items-center">
           <Loader2 className="w-12 h-12 text-purple-600 animate-spin mb-4" />
           <p className="text-sm font-mono text-slate-500">Mapping visual nodes...</p>
         </main>
@@ -185,7 +185,7 @@ function RoadmapContent() {
       <Toaster position="top-right" />
 
       {/* Main container */}
-      <main className="flex-1 ml-20 p-6 md:p-10 max-w-7xl overflow-x-hidden">
+      <main className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 max-w-7xl overflow-x-hidden">
         {!activeRoadmapId ? (
           /* Empty / Selection state */
           <div className="flex flex-col justify-center items-center p-12 text-center h-[70vh]">

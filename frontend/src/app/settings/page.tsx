@@ -158,7 +158,7 @@ export default function SettingsPage() {
     return (
       <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
         <HoverSidebar />
-        <main className="flex-1 ml-20 flex items-center justify-center">
+        <main className="flex-1 ml-0 md:ml-20 pt-16 md:pt-0 flex items-center justify-center">
           <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
         </main>
       </div>
@@ -170,7 +170,7 @@ export default function SettingsPage() {
       <HoverSidebar />
       <Toaster position="top-right" />
 
-      <main className="flex-1 ml-20 p-6 md:p-10 max-w-3xl mx-auto">
+      <main className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-[10px] font-extrabold font-mono rounded-full border border-purple-200 uppercase">

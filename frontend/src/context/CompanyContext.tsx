@@ -49,6 +49,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (typeof window !== "undefined") {
       localStorage.removeItem("seekh_auth_token");
       localStorage.removeItem("seekh_onboarding_completed");
+      // Force a hard reload/navigation to clear all in-memory Redux and RTK Query cache states
+      window.location.href = "/login";
     }
     setIsAuthenticatedState(false);
     setHasCompletedOnboardingState(false);

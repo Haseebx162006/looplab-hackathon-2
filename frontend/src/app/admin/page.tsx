@@ -231,7 +231,7 @@ export default function AdminDashboardPage() {
       <Toaster position="top-right" />
 
       {/* Main Body */}
-      <main className="flex-1 ml-20 p-6 md:p-10 max-w-7xl overflow-x-hidden">
+      <main className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 max-w-7xl overflow-x-hidden">
         {/* Header bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>

@@ -203,7 +203,7 @@ function AssessmentContent() {
       <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
         <HoverSidebar />
         <Toaster position="top-right" />
-        <main className="flex-1 ml-20 p-6 md:p-10 max-w-4xl mx-auto">
+        <main className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -402,7 +402,7 @@ function AssessmentContent() {
     return (
       <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
         <HoverSidebar />
-        <main className="flex-1 ml-20 p-10 flex flex-col justify-center items-center">
+        <main className="flex-1 ml-0 md:ml-20 p-10 pt-24 md:pt-10 flex flex-col justify-center items-center">
           <Loader2 className="w-12 h-12 text-purple-600 animate-spin mb-4" />
           <p className="text-sm font-mono text-slate-500">Compiling diagnostic questions...</p>
         </main>
@@ -414,7 +414,7 @@ function AssessmentContent() {
     return (
       <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
         <HoverSidebar />
-        <main className="flex-1 ml-20 p-10 flex flex-col justify-center items-center">
+        <main className="flex-1 ml-0 md:ml-20 p-10 pt-24 md:pt-10 flex flex-col justify-center items-center">
           <ClipboardList className="w-12 h-12 text-red-300 mb-4" />
           <p className="text-sm font-mono text-red-500">Error loading test data. The session may have expired.</p>
           <button
@@ -434,7 +434,7 @@ function AssessmentContent() {
       <Toaster position="top-right" />
 
       {/* Main container */}
-      <main className="flex-1 ml-20 p-6 md:p-10 max-w-4xl mx-auto overflow-x-hidden relative">
+      <main className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 max-w-4xl mx-auto overflow-x-hidden relative">
         {/* Loading Pipelines Overlay */}
         <AnimatePresence>
           {pipelineStep !== "idle" && (

@@ -182,19 +182,22 @@ export default function LoginPage() {
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
 
       {/* LEFT SIDE: Robot Hero Cover */}
-      <div className="hidden lg:flex w-1/2 h-full relative bg-[#DECFF3]/30 overflow-hidden items-center justify-center border-r border-purple-200/50">
-        <div className="absolute inset-0 bg-gradient-to-tr from-[#D8CBEB]/45 via-transparent to-transparent pointer-events-none" />
+      <div className="hidden lg:flex w-1/2 h-full relative bg-[#F5F2FA] overflow-hidden items-center justify-center">
+        {/* Full-height cover image focused on the head, shifted to the left */}
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-full h-full relative flex items-center justify-center p-12"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1 }}
+          className="w-full h-full relative"
         >
           <img
-            src="/robot.png"
+            src="/login-robot.png"
             alt="Seekh AI Agent"
-            className="max-h-[60%] w-auto object-contain drop-shadow-[0_24px_50px_rgba(124,58,237,0.25)] animate-bounce-slow"
+            className="w-[125%] max-w-none h-full object-cover object-top -translate-x-[15%]"
           />
+          {/* Subtle overlay gradients for depth */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#F5F2FA]/80 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#F5F2FA]/40 pointer-events-none" />
         </motion.div>
       </div>
 
@@ -238,15 +241,15 @@ export default function LoginPage() {
               {step === 2
                 ? "Enter 6-Digit OTP Code"
                 : isSignUp
-                ? "Create Seekh Account"
-                : "Welcome back"}
+                  ? "Create Seekh Account"
+                  : "Welcome back"}
             </h1>
             <p className="text-sm text-slate-600 font-mono">
               {step === 2
                 ? `We sent a 6-digit verification code to ${email}`
                 : isSignUp
-                ? "Deploy personalized AI learning roadmaps in 2 minutes."
-                : "Sign in to continue your personalized learning journey."}
+                  ? "Deploy personalized AI learning roadmaps in 2 minutes."
+                  : "Sign in to continue your personalized learning journey."}
             </p>
           </motion.div>
 
@@ -270,7 +273,7 @@ export default function LoginPage() {
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Hassan Ali"
+                        placeholder="example"
                         className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-hidden focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20 transition-all font-sans"
                       />
                     </div>
@@ -289,7 +292,7 @@ export default function LoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="hassan@university.edu"
+                    placeholder="example@university.edu"
                     className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-hidden focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20 transition-all font-mono"
                   />
                 </div>

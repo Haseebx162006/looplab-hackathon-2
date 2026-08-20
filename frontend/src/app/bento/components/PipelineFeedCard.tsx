@@ -15,7 +15,7 @@ interface SubmissionItem {
 }
 
 const SUBMISSIONS_DATA: SubmissionItem[] = [
-  { id: 1, student: "Hassan Ali", task: "Binary Search Tree Implementation", module: "DSA & Problem Solving", score: "98/100", status: "Approved", avatar: "HA" },
+  { id: 1, student: "Hasan Raza", task: "Binary Search Tree Implementation", module: "DSA & Problem Solving", score: "98/100", status: "Approved", avatar: "HA" },
   { id: 2, student: "Zainab Omar", task: "FastAPI REST Vector Endpoint", module: "Web & Backend Dev", score: "Reviewing", status: "In Review", avatar: "ZO" },
   { id: 3, student: "Usman Khan", task: "Qdrant RAG Prompt Engineering", module: "AI & Machine Learning", score: "82/100", status: "Needs Improvement", avatar: "UK" },
   { id: 4, student: "Ayesha Malik", task: "CrewAI Multi-Agent Evaluator", module: "AI & Machine Learning", score: "95/100", status: "Approved", avatar: "AM" },
@@ -61,11 +61,10 @@ export const PipelineFeedCard: React.FC = () => {
             <button
               key={tab}
               onClick={() => setActiveFilter(tab)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                activeFilter === tab
-                  ? "bg-[#D8CBEB] text-slate-950 font-bold shadow"
-                  : "text-white/60 hover:text-white"
-              }`}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${activeFilter === tab
+                ? "bg-[#D8CBEB] text-slate-950 font-bold shadow"
+                : "text-white/60 hover:text-white"
+                }`}
             >
               {tab}
             </button>
@@ -100,9 +99,8 @@ export const PipelineFeedCard: React.FC = () => {
 
               <div className="text-right">
                 <div className="text-xs font-mono font-bold text-purple-300">{item.score}</div>
-                <div className={`text-[10px] flex items-center justify-end gap-1 font-mono ${
-                  item.status === "Approved" ? "text-emerald-400" : item.status === "In Review" ? "text-amber-300" : "text-rose-400"
-                }`}>
+                <div className={`text-[10px] flex items-center justify-end gap-1 font-mono ${item.status === "Approved" ? "text-emerald-400" : item.status === "In Review" ? "text-amber-300" : "text-rose-400"
+                  }`}>
                   {item.status === "Approved" ? (
                     <CheckCircle2 className="w-3 h-3 animate-pulse" />
                   ) : item.status === "In Review" ? (

@@ -190,7 +190,7 @@ export const HoverSidebar: React.FC = () => {
                 className="whitespace-nowrap overflow-hidden pr-2 flex items-center justify-between w-full"
               >
                 <div>
-                  <div className="text-xs font-bold text-white truncate">Hassan Ali</div>
+                  <div className="text-xs font-bold text-white truncate">example</div>
                   <div className="text-[10px] font-mono text-slate-400 truncate">Student Profile</div>
                 </div>
                 <button

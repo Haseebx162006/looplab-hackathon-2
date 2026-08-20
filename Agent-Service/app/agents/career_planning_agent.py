@@ -1,270 +1,77 @@
 import json
-import litellm
-litellm.drop_params = True
-litellm.num_retries = 3
+import logging
+from app.config.llm import call_llm_with_fallback
 
-try:
-    import crewai.llms.cache as _crewai_cache
-    _crewai_cache.mark_cache_breakpoint = lambda msg: msg
-except ImportError:
-    pass
+logger = logging.getLogger("app")
 
-try:
-    from crewai import Agent, Task, Crew, Process
-    from app.tools.analyze_skills_tool import analyze_student_skills
-    from app.tools.generate_skill_gap_tool import generate_skill_gap
-    from app.tools.create_roadmap_tool import create_roadmap
-    from app.config.settings import settings
-    HAS_CREWAI = True
-except ImportError:
-    HAS_CREWAI = False
 
-def trim_payloads(student_profile_str: str, assessment_results_str: str) -> tuple[str, str]:
+def trim_payloads(student_profile_str: str, assessment_results_str: str) -> tuple:
     """
-    Utility to trim student profile and assessment results to keep prompts compact
-    and avoid exceeding Groq's strict TPM limits.
+    Trims student profile and assessment results to minimize token usage.
     """
     try:
         profile = json.loads(student_profile_str)
         trimmed_profile = {
-            "experience_level": profile.get("experience_level", "Beginner"),
-            "background": str(profile.get("background", ""))[:150],  # Truncate background
-            "interests": profile.get("interests", [])[:5]           # Limit to 5 interests
+            "level": profile.get("experience_level", "Beginner"),
+            "bg": str(profile.get("background", ""))[:100],
+            "interests": profile.get("interests", [])[:5]
         }
-        profile_out = json.dumps(trimmed_profile)
     except Exception:
-        profile_out = student_profile_str[:400]
+        trimmed_profile = student_profile_str[:200]
 
     try:
         results = json.loads(assessment_results_str)
         trimmed_results = []
-        for r in results:
+        for r in results[:10]:  # Max 10 questions
             trimmed_results.append({
-                "question": str(r.get("question", ""))[:100],  # Shorten question
-                "answer": str(r.get("answer", ""))[:100]       # Shorten student answer
+                "q": str(r.get("question", ""))[:80],
+                "a": str(r.get("answer", ""))[:80]
             })
-        results_out = json.dumps(trimmed_results)
     except Exception:
-        results_out = assessment_results_str[:400]
+        trimmed_results = assessment_results_str[:300]
 
-    return profile_out, results_out
+    return json.dumps(trimmed_profile), json.dumps(trimmed_results)
 
-if HAS_CREWAI:
-    def run_skill_analysis_crew(student_profile_str: str, assessment_results_str: str) -> str:
-        """
-        Executes sequential tasks to analyze student skills and identify strengths, weaknesses, and missing skills.
-        Returns a combined JSON string containing: skill_levels, strengths, weaknesses, missing_skills.
-        """
-        from app.config.llm import run_crew_with_fallback
-        
-        # Trim payloads before dumping into task descriptions to optimize prompt size (Issue 3)
-        profile_trimmed, results_trimmed = trim_payloads(student_profile_str, assessment_results_str)
-        
-        def create_crew(llm_client) -> Crew:
-            career_planner = Agent(
-                role="Career Planning Specialist",
-                goal="Help students transition into their target careers by analyzing their skills and creating roadmap pathways.",
-                backstory="You are an expert career counselor and education planner. You have deep knowledge of what skills are required for various tech careers.",
-                tools=[analyze_student_skills, generate_skill_gap, create_roadmap],
-                llm=llm_client,
-                verbose=True
-            )
-            task1 = Task(
-                description=f"""
-                Analyze the student's profile and assessment results to determine current skill levels.
-                Use the 'Analyze Student Skills' tool with the inputs:
-                student_profile: {profile_trimmed}
-                assessment_results: {results_trimmed}
-                
-                Output only the JSON mapping of skills to levels.
-                """,
-                expected_output="JSON object mapping skills to levels (Beginner, Intermediate, Advanced).",
-                agent=career_planner
-            )
-            task2 = Task(
-                description=f"""
-                Take the skill levels from the previous task (Task 1) and generate a skill gap analysis.
-                Use the 'Generate Skill Gap' tool with:
-                skill_levels: the result from Task 1
-                career_goal: a generic career goal suited to their background/skills
-                
-                Combine the outputs. Return a single JSON object with EXACTLY this structure:
-                {{
-                  "skill_levels": <the skill_levels dictionary from Task 1>,
-                  "strengths": <list of strengths returned by the tool>,
-                  "weaknesses": <list of weaknesses returned by the tool>,
-                  "missing_skills": <list of missing_skills returned by the tool>
-                }}
-                Do not add any explanations or markdown formatting outside of the JSON object.
-                """,
-                expected_output="A single combined JSON object with keys: skill_levels, strengths, weaknesses, missing_skills.",
-                agent=career_planner
-            )
-            return Crew(
-                agents=[career_planner],
-                tasks=[task1, task2],
-                process=Process.sequential,
-                verbose=True
-            )
-            
-        return run_crew_with_fallback(create_crew)
 
-    def run_roadmap_crew(student_profile_str: str, assessment_results_str: str, career_goal: str) -> str:
-        """
-        Executes sequential tasks to analyze skills, find gaps, and build a learning roadmap for the student.
-        Returns a combined JSON string containing: skill_profile, career_goal, modules.
-        """
-        from app.config.llm import run_crew_with_fallback
-        
-        # Trim payloads before dumping into task descriptions to optimize prompt size (Issue 3)
-        profile_trimmed, results_trimmed = trim_payloads(student_profile_str, assessment_results_str)
-        
-        def create_crew(llm_client) -> Crew:
-            career_planner = Agent(
-                role="Career Planning Specialist",
-                goal="Help students transition into their target careers by analyzing their skills and creating roadmap pathways.",
-                backstory="You are an expert career counselor and education planner. You have deep knowledge of what skills are required for various tech careers.",
-                tools=[analyze_student_skills, generate_skill_gap, create_roadmap],
-                llm=llm_client,
-                verbose=True
-            )
-            task1 = Task(
-                description=f"""
-                Analyze the student's profile and assessment results to determine current skill levels.
-                Use the 'Analyze Student Skills' tool with the inputs:
-                student_profile: {profile_trimmed}
-                assessment_results: {results_trimmed}
-                
-                Output only the JSON mapping of skills to levels.
-                """,
-                expected_output="JSON object mapping skills to levels (Beginner, Intermediate, Advanced).",
-                agent=career_planner
-            )
-            task2 = Task(
-                description=f"""
-                Take the skill levels from Task 1 and generate a skill gap analysis against the target career goal.
-                Use the 'Generate Skill Gap' tool with:
-                skill_levels: the result from Task 1
-                career_goal: {career_goal}
-                
-                Combine the outputs. Return a single JSON object with EXACTLY this structure:
-                {{
-                  "skill_levels": <the skill_levels dictionary from Task 1>,
-                  "strengths": <list of strengths returned by the tool>,
-                  "weaknesses": <list of weaknesses returned by the tool>,
-                  "missing_skills": <list of missing_skills returned by the tool>
-                }}
-                Do not add any explanations or markdown formatting outside of the JSON object.
-                """,
-                expected_output="A single combined JSON object with keys: skill_levels, strengths, weaknesses, missing_skills.",
-                agent=career_planner
-            )
-            task3 = Task(
-                description=f"""
-                Take the skill gap results from Task 2 and generate a personalized learning roadmap.
-                Use the 'Create Roadmap' tool with:
-                skill_gap: the result from Task 2
-                career_goal: {career_goal}
-                
-                Combine all information into a single final JSON object representing the full RoadmapResponse:
-                {{
-                  "skill_profile": <the complete JSON object from Task 2>,
-                  "career_goal": "{career_goal}",
-                  "modules": <the list of modules returned by the Create Roadmap tool>
-                }}
-                Do not add any explanations or markdown formatting outside of the JSON object.
-                """,
-                expected_output="A single final JSON object containing keys: skill_profile, career_goal, modules.",
-                agent=career_planner
-            )
-            return Crew(
-                agents=[career_planner],
-                tasks=[task1, task2, task3],
-                process=Process.sequential,
-                verbose=True
-            )
-            
-        return run_crew_with_fallback(create_crew)
+def run_skill_analysis_crew(student_profile_str: str, assessment_results_str: str) -> str:
+    """
+    Analyzes student skills by calling the LLM directly (no CrewAI overhead).
+    Returns a JSON string with: skill_levels, strengths, weaknesses, missing_skills.
+    """
+    profile_trimmed, results_trimmed = trim_payloads(student_profile_str, assessment_results_str)
 
-else:
-    # Local fallback mockup implementations for environments without CrewAI (e.g. testing)
-    def run_skill_analysis_crew(student_profile_str: str, assessment_results_str: str) -> str:
-        mock_data = {
-            "skill_levels": {
-                "TypeScript": "Intermediate",
-                "Node.js": "Intermediate",
-                "PostgreSQL": "Beginner"
-            },
-            "strengths": [
-                "Quick learner",
-                "Good logical reasoning",
-                "Familiar with basic TypeScript structures"
-            ],
-            "weaknesses": [
-                "Lack of database design experience",
-                "Needs better understanding of SQL indexes"
-            ],
-            "missing_skills": [
-                "Redis caching",
-                "Docker",
-                "Database migration versioning"
-            ]
-        }
-        return json.dumps(mock_data)
+    prompt = f"""Analyze the student profile and assessment answers below.
+Return a JSON object with exactly these keys:
+- "skill_levels": dict mapping each skill to "Beginner", "Intermediate", or "Advanced"
+- "strengths": list of strong skills
+- "weaknesses": list of weak areas
+- "missing_skills": list of skills needed but not demonstrated
 
-    def run_roadmap_crew(student_profile_str: str, assessment_results_str: str, career_goal: str) -> str:
-        mock_data = {
-            "skill_profile": {
-                "skill_levels": {
-                    "TypeScript": "Intermediate",
-                    "Node.js": "Intermediate",
-                    "PostgreSQL": "Beginner"
-                },
-                "strengths": [
-                    "Quick learner",
-                    "Good logical reasoning",
-                    "Familiar with basic TypeScript structures"
-                ],
-                "weaknesses": [
-                    "Lack of database design experience",
-                    "Needs better understanding of SQL indexes"
-                ],
-                "missing_skills": [
-                    "Redis caching",
-                    "Docker",
-                    "Database migration versioning"
-                ]
-            },
-            "career_goal": career_goal,
-            "modules": [
-                {
-                    "module_number": 1,
-                    "title": "Advanced Database Design & Indexing",
-                    "description": "Learn complex relational schemas, query profiling, and index strategies in PostgreSQL.",
-                    "skills_covered": ["PostgreSQL", "Database Design"],
-                    "tasks": [
-                        "Implement a many-to-many relationship using a junction table.",
-                        "Explain the difference between a B-Tree and a Hash index in PostgreSQL."
-                    ],
-                    "project": {
-                        "name": "E-Commerce Schema Optimizer",
-                        "description": "Design and optimize a database schema with over 10 tables for high query performance."
-                    }
-                },
-                {
-                    "module_number": 2,
-                    "title": "Caching & Service Containerization",
-                    "description": "Integrate Redis cache for key-value storage and wrap the application in Docker containers.",
-                    "skills_covered": ["Redis caching", "Docker"],
-                    "tasks": [
-                        "Set up a Redis caching layer for get-user endpoint.",
-                        "Write a Dockerfile and docker-compose.yml to run Node.js and PostgreSQL together."
-                    ],
-                    "project": {
-                        "name": "Cached Service Containerization",
-                        "description": "Dockerize a microservice backend and optimize database query load using Redis."
-                    }
-                }
-            ]
-        }
-        return json.dumps(mock_data)
+Student: {profile_trimmed}
+Answers: {results_trimmed}
+
+Return ONLY the JSON object, no markdown or explanation."""
+
+    return call_llm_with_fallback(prompt, response_format={"type": "json_object"})
+
+
+def run_roadmap_crew(student_profile_str: str, assessment_results_str: str, career_goal: str) -> str:
+    """
+    Generates a learning roadmap by calling the LLM directly (no CrewAI overhead).
+    Returns a JSON string with: skill_profile, career_goal, modules.
+    """
+    profile_trimmed, results_trimmed = trim_payloads(student_profile_str, assessment_results_str)
+
+    prompt = f"""Create a learning roadmap for a student targeting: {career_goal}
+
+Student: {profile_trimmed}
+Answers: {results_trimmed}
+
+Return a JSON object with:
+- "skill_profile": {{"skill_levels": {{}}, "strengths": [], "weaknesses": [], "missing_skills": []}}
+- "career_goal": "{career_goal}"
+- "modules": list of modules, each with: module_number (int), title, description, skills_covered (list), tasks (list), project ({{"name": "...", "description": "..."}})
+
+Return ONLY the JSON object, no markdown or explanation."""
+
+    return call_llm_with_fallback(prompt, response_format={"type": "json_object"})

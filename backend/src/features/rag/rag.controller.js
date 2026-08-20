@@ -1,90 +1,66 @@
-import { RagService } from './services/rag.service.js';
+const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://localhost:5002';
 
-export async function handleIngest(req, res, next) {
+async function proxyRequest(req, res, next, path, method = 'GET') {
   try {
-    const { mentorId = 'default_mentor', menteeId, text, fileName, sourceType, visibility, apiKey } = req.body;
-
-    if (!text) {
-      res.status(400).json({ error: 'Text field is required for ingestion' });
-      return;
+    const url = new URL(`${RAG_SERVICE_URL}${path}`);
+    
+    if (req.query) {
+      Object.keys(req.query).forEach(key => {
+        if (req.query[key] !== undefined) {
+          url.searchParams.append(key, String(req.query[key]));
+        }
+      });
     }
 
-    const result = await RagService.ingest({
-      mentorId,
-      menteeId,
-      text,
-      fileName,
-      sourceType,
-      visibility,
-      apiKey,
-    });
+    const options = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    };
 
-    res.status(201).json({
-      message: 'Document ingested successfully into vector store',
-      ingestedCount: result.ingestedCount,
-      chunks: result.chunks,
-    });
+    if (method !== 'GET' && method !== 'HEAD' && req.body) {
+      options.body = JSON.stringify(req.body);
+    }
+
+    const response = await fetch(url.toString(), options);
+    
+    let responseData;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      const text = await response.text();
+      try {
+        responseData = JSON.parse(text);
+      } catch {
+        responseData = { message: text };
+      }
+    }
+
+    res.status(response.status).json(responseData);
   } catch (error) {
+    console.error(`[RAG Proxy Error] Failed to forward request to RAG-Service:`, error.message);
     next(error);
   }
+}
+
+export async function handleIngest(req, res, next) {
+  await proxyRequest(req, res, next, '/api/rag/ingest', 'POST');
 }
 
 export async function handleQuery(req, res, next) {
-  try {
-    const { query, mentorId = 'default_mentor', menteeId, apiKey, generateAnswer = true } = req.body;
-
-    if (!query) {
-      res.status(400).json({ error: 'Query string is required' });
-      return;
-    }
-
-    const result = await RagService.query({
-      query,
-      mentorId,
-      menteeId,
-      apiKey,
-      generateAnswer,
-    });
-
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
+  await proxyRequest(req, res, next, '/api/rag/query', 'POST');
 }
 
 export async function handleListChunks(req, res, next) {
-  try {
-    const mentorId = req.query.mentorId || 'default_mentor';
-    const chunks = await RagService.listChunks(mentorId);
-    res.json({ chunks, count: chunks.length });
-  } catch (error) {
-    next(error);
-  }
+  await proxyRequest(req, res, next, '/api/rag/chunks', 'GET');
 }
 
 export async function handleDeleteChunk(req, res, next) {
-  try {
-    const { id } = req.params;
-    const mentorId = req.query.mentorId || 'default_mentor';
-
-    const deleted = await RagService.deleteChunk(id, mentorId);
-    if (!deleted) {
-      res.status(404).json({ error: 'Chunk not found or unauthorized' });
-      return;
-    }
-
-    res.json({ message: 'Chunk deleted successfully', id });
-  } catch (error) {
-    next(error);
-  }
+  await proxyRequest(req, res, next, `/api/rag/chunks/${req.params.id}`, 'DELETE');
 }
 
 export async function handleListDrafts(req, res, next) {
-  try {
-    const mentorId = req.query.mentorId || 'default_mentor';
-    const drafts = await RagService.listDrafts(mentorId);
-    res.json({ drafts });
-  } catch (error) {
-    next(error);
-  }
+  await proxyRequest(req, res, next, '/api/rag/drafts', 'GET');
 }

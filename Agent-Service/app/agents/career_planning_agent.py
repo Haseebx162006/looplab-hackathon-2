@@ -18,7 +18,9 @@ if HAS_CREWAI:
     llm = LLM(
         model="groq/groq/compound-mini",
         api_key=settings.GROQ_API_KEY,
-        max_retries=5
+        max_retries=5,
+        drop_params=True,
+        additional_drop_params=["cache_breakpoint"]
     )
 
     # Define agent

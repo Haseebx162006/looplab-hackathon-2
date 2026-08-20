@@ -13,17 +13,22 @@ class FallbackLLM(LLM):
     If the primary model is decommissioned or not found, it falls back
     to the next model in the specified model list.
     """
-    def __init__(self, models: list, **kwargs):
-        self.models_list = models
-        self.current_model_idx = 0
+    def __new__(cls, models: list, **kwargs):
         if not models:
             raise ValueError("models list cannot be empty")
-        super().__init__(model=models[0], **kwargs)
+        # Strip models out and call the parent constructor with the first model
+        instance = super().__new__(cls, model=models[0], **kwargs)
+        return instance
+
+    def __init__(self, models: list, **kwargs):
+        # Set private state variables bypassing Pydantic attributes check
+        object.__setattr__(self, "_models_list", models)
+        object.__setattr__(self, "_current_model_idx", 0)
         
     def call(self, messages, callbacks=None, **kwargs):
-        while self.current_model_idx < len(self.models_list):
-            model = self.models_list[self.current_model_idx]
-            self.model = model  # Set the active model in the parent class
+        while self._current_model_idx < len(self._models_list):
+            model = self._models_list[self._current_model_idx]
+            object.__setattr__(self, "model", model)
             try:
                 # Call the parent CrewAI LLM class
                 return super().call(messages, callbacks=callbacks, **kwargs)
@@ -34,13 +39,13 @@ class FallbackLLM(LLM):
                     "does not exist", "not found", "decommissioned", "invalid model", 
                     "unknown model", "not support", "unsupported", "invalid_request_error"
                 ])
-                if is_model_error and self.current_model_idx + 1 < len(self.models_list):
-                    next_model = self.models_list[self.current_model_idx + 1]
+                if is_model_error and self._current_model_idx + 1 < len(self._models_list):
+                    next_model = self._models_list[self._current_model_idx + 1]
                     logger.warning(
                         f"Model {model} failed with model error: {e}. "
                         f"Trying next fallback model: {next_model}"
                     )
-                    self.current_model_idx += 1
+                    object.__setattr__(self, "_current_model_idx", self._current_model_idx + 1)
                 else:
                     # Let other errors (e.g. rate limit, auth) bubble up normally
                     raise e

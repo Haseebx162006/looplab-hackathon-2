@@ -74,16 +74,31 @@ export class CvAnalyzeController {
       const cv_url: string = profile.cv_url;
 
       // 2. Call Agent Service to analyze the CV
-      const agentResponse = await fetch(`${config.aiAgentServiceUrl}/agent/analyze-cv`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cv_url }),
-      });
+      let agentResponse: Response;
+      try {
+        agentResponse = await fetch(`${config.aiAgentServiceUrl}/agent/analyze-cv`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cv_url }),
+        });
+      } catch (fetchError: any) {
+        console.error('Agent Service fetch failed:', fetchError.message);
+        return res.status(502).json({
+          error: `Could not reach the AI analysis service. Please ensure the Agent Service is running on ${config.aiAgentServiceUrl}.`,
+        });
+      }
 
       if (!agentResponse.ok) {
-        const errorText = await agentResponse.text();
+        let errorDetail = 'Unknown error';
+        try {
+          const errorData = await agentResponse.json() as { detail?: string; error?: string };
+          errorDetail = errorData.detail || errorData.error || await agentResponse.text();
+        } catch {
+          errorDetail = await agentResponse.text();
+        }
+        console.error(`Agent Service returned ${agentResponse.status}:`, errorDetail);
         return res.status(502).json({
-          error: `CV analysis failed: ${errorText}`,
+          error: `CV analysis failed: ${errorDetail}`,
         });
       }
 

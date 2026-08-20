@@ -25,6 +25,7 @@ if HAS_CREWAI:
         model="groq/llama-3.3-70b-versatile",
         api_key=settings.GROQ_API_KEY,
         max_retries=5,
+        max_tokens=8192,
         drop_params=True,
         additional_drop_params=["cache_breakpoint"],
         fallbacks=[

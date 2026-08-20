@@ -65,13 +65,17 @@ def parse_and_clean_json(raw_text: str) -> dict:
         clean_text = "\n".join(lines).strip()
         
     try:
-        return json.loads(clean_text)
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse JSON. Raw text: {raw_text}. Error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Agent returned invalid JSON formatting: {str(e)}"
-        )
+        import json_repair
+        return json_repair.loads(clean_text)
+    except Exception:
+        try:
+            return json.loads(clean_text)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON. Raw text: {raw_text}. Error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Agent returned invalid JSON formatting: {str(e)}"
+            )
 
 @router.post("/analyze-skills", response_model=SkillProfileResponse, status_code=status.HTTP_200_OK)
 def analyze_skills(payload: AnalyzeSkillsRequest):

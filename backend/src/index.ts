@@ -6,6 +6,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import healthRoutes from './features/health/health.routes.js';
 import vectorRoutes from './features/vector-search/vector.routes.js';
 import ragRoutes from './features/rag/rag.routes.js';
+import authRoutes from './modules/auth/auth.routes.js';
 
 const app = express();
 
@@ -17,11 +18,12 @@ app.use(express.json());
 app.use('/api', healthRoutes);
 app.use('/api/vector', vectorRoutes);
 app.use('/api/rag', ragRoutes);
+app.use('/auth', authRoutes);
 
 // Root route
 app.get('/', (_req, res) => {
   res.json({
-    message: '🚀 Express + PostgreSQL + pgvector Backend API (JavaScript)',
+    message: '🚀 Express + PostgreSQL + pgvector Backend API (TypeScript)',
     endpoints: {
       health: 'GET /api/health',
       insertVector: 'POST /api/vector/items',
@@ -29,6 +31,11 @@ app.get('/', (_req, res) => {
       ragIngest: 'POST /api/rag/ingest',
       ragQuery: 'POST /api/rag/query',
       ragChunks: 'GET /api/rag/chunks',
+      authSignup: 'POST /auth/signup',
+      authVerifyOtp: 'POST /auth/verify-otp',
+      authResendOtp: 'POST /auth/resend-otp',
+      authLogin: 'POST /auth/login',
+      authMe: 'GET /auth/me (Protected)',
     },
   });
 });
@@ -40,7 +47,7 @@ app.use(errorHandler);
 async function startServer() {
   await initDatabase();
   app.listen(config.port, () => {
-    console.log(`⚡ Server running on http://localhost:${config.port} in ${config.nodeEnv} mode (JS)`);
+    console.log(`⚡ Server running on http://localhost:${config.port} in ${config.nodeEnv} mode (TS)`);
   });
 }
 

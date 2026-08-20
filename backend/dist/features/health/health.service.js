@@ -1,25 +1,24 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkSystemHealth = checkSystemHealth;
-const index_js_1 = require("../../db/index.js");
-async function checkSystemHealth() {
+import { pool } from '../../db/index.js';
+export async function checkHealth() {
     let dbStatus = 'disconnected';
-    let pgvectorStatus = 'unknown';
+    let pgvectorStatus = 'disabled';
     try {
-        const result = await index_js_1.pool.query("SELECT extname FROM pg_extension WHERE extname = 'vector'");
-        dbStatus = 'connected';
-        pgvectorStatus = result.rows.length > 0 ? 'installed' : 'not_installed';
+        const res = await pool.query('SELECT 1 as conn, EXISTS (SELECT 1 FROM pg_extension WHERE extname = $1) as vector_exists;', ['vector']);
+        if (res.rows[0]?.conn === 1) {
+            dbStatus = 'connected';
+        }
+        if (res.rows[0]?.vector_exists) {
+            pgvectorStatus = 'enabled';
+        }
     }
     catch {
-        dbStatus = 'disconnected';
+        dbStatus = 'error';
     }
     return {
         status: 'ok',
-        uptime: process.uptime(),
         timestamp: new Date().toISOString(),
-        services: {
-            database: dbStatus,
-            pgvector: pgvectorStatus,
-        },
+        database: dbStatus,
+        pgvector: pgvectorStatus,
+        uptime: process.uptime(),
     };
 }

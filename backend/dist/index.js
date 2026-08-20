@@ -1,41 +1,48 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
-const env_js_1 = require("./config/env.js");
-const index_js_1 = require("./db/index.js");
-const errorHandler_js_1 = require("./middleware/errorHandler.js");
-const health_routes_js_1 = __importDefault(require("./features/health/health.routes.js"));
-const vector_routes_js_1 = __importDefault(require("./features/vector-search/vector.routes.js"));
-const app = (0, express_1.default)();
+import express from 'express';
+import cors from 'cors';
+import { config } from './config/env.js';
+import { initDatabase } from './db/index.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import healthRoutes from './features/health/health.routes.js';
+import vectorRoutes from './features/vector-search/vector.routes.js';
+import ragRoutes from './features/rag/rag.routes.js';
+import authRoutes from './modules/auth/auth.routes.js';
+const app = express();
 // Middlewares
-app.use((0, cors_1.default)());
-app.use(express_1.default.json());
+app.use(cors());
+app.use(express.json());
 // Routes
-app.use('/api', health_routes_js_1.default);
-app.use('/api/vector', vector_routes_js_1.default);
+app.use('/api', healthRoutes);
+app.use('/api/vector', vectorRoutes);
+app.use('/api/rag', ragRoutes);
+app.use('/auth', authRoutes);
 // Root route
 app.get('/', (_req, res) => {
     res.json({
-        message: '🚀 Express + PostgreSQL + pgvector Backend API',
+        message: '🚀 Express + PostgreSQL + pgvector Backend API (TypeScript)',
         endpoints: {
             health: 'GET /api/health',
             insertVector: 'POST /api/vector/items',
             searchVector: 'POST /api/vector/search',
+            ragIngest: 'POST /api/rag/ingest',
+            ragQuery: 'POST /api/rag/query',
+            ragChunks: 'GET /api/rag/chunks',
+            authSignup: 'POST /auth/signup',
+            authVerifyOtp: 'POST /auth/verify-otp',
+            authResendOtp: 'POST /auth/resend-otp',
+            authLogin: 'POST /auth/login',
+            authMe: 'GET /auth/me (Protected)',
         },
     });
 });
 // Global Error Handler
-app.use(errorHandler_js_1.errorHandler);
+app.use(errorHandler);
 // Start Server
 async function startServer() {
-    await (0, index_js_1.initDatabase)();
-    app.listen(env_js_1.config.port, () => {
-        console.log(`⚡ Server running on http://localhost:${env_js_1.config.port} in ${env_js_1.config.nodeEnv} mode`);
+    await initDatabase();
+    app.listen(config.port, () => {
+        console.log(`⚡ Server running on http://localhost:${config.port} in ${config.nodeEnv} mode (TS)`);
     });
 }
 startServer();
-exports.default = app;
+export default app;

@@ -1,10 +1,9 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorHandler = errorHandler;
-function errorHandler(err, _req, res, _next) {
-    console.error('[Error]:', err.stack || err.message);
-    res.status(500).json({
+export function errorHandler(err, _req, res, _next) {
+    console.error('[Error]:', err.stack || err.message || err);
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || 'Internal Server Error';
+    res.status(status).json({
         success: false,
-        error: err.message || 'Internal Server Error',
+        error: message,
     });
 }

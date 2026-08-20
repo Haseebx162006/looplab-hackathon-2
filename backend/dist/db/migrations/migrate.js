@@ -1,11 +1,11 @@
 export const sqlMigrations = [
-  {
-    name: '001_init_pgvector',
-    sql: `CREATE EXTENSION IF NOT EXISTS vector;`,
-  },
-  {
-    name: '002_create_rag_tables',
-    sql: `
+    {
+        name: '001_init_pgvector',
+        sql: `CREATE EXTENSION IF NOT EXISTS vector;`,
+    },
+    {
+        name: '002_create_rag_tables',
+        sql: `
       CREATE TABLE IF NOT EXISTS mentor_style_profiles (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         mentor_id VARCHAR(255) NOT NULL UNIQUE,
@@ -63,53 +63,67 @@ export const sqlMigrations = [
       CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_mentor ON knowledge_chunks(mentor_id);
       CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_search ON knowledge_chunks USING gin (search_vector);
     `,
-  },
-];
+    },
+    {
+        name: '003_create_auth_tables',
+        sql: `
+      CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        is_verified BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
 
+      CREATE TABLE IF NOT EXISTS otp_verifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) NOT NULL UNIQUE,
+        otp_code VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    },
+];
 export async function runMigrations(pool) {
-  const client = await pool.connect();
-  try {
-    await client.query(`
+    const client = await pool.connect();
+    try {
+        await client.query(`
       CREATE TABLE IF NOT EXISTS _schema_migrations (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) UNIQUE NOT NULL,
         executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
-
-    for (const migration of sqlMigrations) {
-      const checkResult = await client.query(
-        'SELECT name FROM _schema_migrations WHERE name = $1',
-        [migration.name]
-      );
-
-      if (checkResult.rows.length === 0) {
-        await client.query('BEGIN');
-        await client.query(migration.sql);
-
-        if (migration.name === '002_create_rag_tables') {
-          try {
-            await client.query(`
+        for (const migration of sqlMigrations) {
+            const checkResult = await client.query('SELECT name FROM _schema_migrations WHERE name = $1', [migration.name]);
+            if (checkResult.rows.length === 0) {
+                await client.query('BEGIN');
+                await client.query(migration.sql);
+                if (migration.name === '002_create_rag_tables') {
+                    try {
+                        await client.query(`
               CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_embedding 
               ON knowledge_chunks USING hnsw (embedding vector_cosine_ops);
             `);
-          } catch {
-            // HNSW index created or skipped
-          }
+                    }
+                    catch {
+                        // HNSW index created or skipped
+                    }
+                }
+                await client.query('INSERT INTO _schema_migrations (name) VALUES ($1)', [migration.name]);
+                await client.query('COMMIT');
+                console.log(`✅ Applied migration: ${migration.name}`);
+            }
         }
-
-        await client.query(
-          'INSERT INTO _schema_migrations (name) VALUES ($1)',
-          [migration.name]
-        );
-        await client.query('COMMIT');
-        console.log(`✅ Applied migration: ${migration.name}`);
-      }
     }
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+    catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    }
+    finally {
+        client.release();
+    }
 }

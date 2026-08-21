@@ -7,7 +7,6 @@ import { Toaster, toast } from "react-hot-toast";
 import {
   Upload,
   Database,
-  Brain,
   Trash2,
   Search,
   Plus,
@@ -15,11 +14,8 @@ import {
   FileText,
   CheckCircle,
   Loader2,
-  Sliders,
   TrendingUp,
   Info,
-  ChevronDown,
-  ChevronUp,
   X
 } from "lucide-react";
 import { HoverSidebar } from "@/components/layout/HoverSidebar";
@@ -27,7 +23,6 @@ import { useCompany } from "@/context/CompanyContext";
 import { useGetMeQuery } from "@/store/api/authApi";
 import {
   useIngestRagDocumentMutation,
-  useQueryRagMutation,
   useGetRagChunksQuery,
   useDeleteRagChunkMutation,
   useGetModulesQuery,
@@ -65,11 +60,7 @@ export default function KnowledgeBasePage() {
   const [selectedModuleId, setSelectedModuleId] = useState("");
   const [dragActive, setDragActive] = useState(false);
 
-  // Playground Tab States
-  const [queryText, setQueryText] = useState("");
-  const [generateAnswer, setGenerateAnswer] = useState(true);
-  const [playgroundResult, setPlaygroundResult] = useState<any | null>(null);
-  const [expandedChunkId, setExpandedChunkId] = useState<string | null>(null);
+
 
   // Manage Tab States
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,7 +85,6 @@ export default function KnowledgeBasePage() {
   });
 
   const [ingestDocument, { isLoading: isIngesting }] = useIngestRagDocumentMutation();
-  const [queryRag, { isLoading: isQuerying }] = useQueryRagMutation();
   const [deleteChunk, { isLoading: isDeleting }] = useDeleteRagChunkMutation();
   const [deleteDocument, { isLoading: isDeletingDocument }] = useDeleteRagDocumentMutation();
 
@@ -180,26 +170,7 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  // Query/Test Handler
-  const handleQueryTest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!queryText.trim()) {
-      toast.error("Please enter a query to test.");
-      return;
-    }
 
-    try {
-      const res = await queryRag({
-        query: queryText,
-        mentorId,
-        generateAnswer
-      }).unwrap();
-      setPlaygroundResult(res);
-      toast.success("RAG response generated.");
-    } catch (err: any) {
-      toast.error(err.data?.error || err.data?.message || err.message || "Query search failed.");
-    }
-  };
 
   // Delete Chunks / Documents Trigger Handlers
   const triggerDeleteChunk = async (id: string) => {
@@ -531,207 +502,6 @@ export default function KnowledgeBasePage() {
               </div>
             </motion.div>
           )}
-
-          {/* PLAYGROUND TAB */}
-          {activeTab === "playground" && (
-            <motion.div
-              key="playground-tab"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.2 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-8"
-            >
-              {/* Query Form Column */}
-              <div className="lg:col-span-5 bg-white p-6 rounded-3xl border border-purple-100 shadow-sm flex flex-col justify-between">
-                <div>
-                  <h3 className="text-lg font-bold font-mono text-slate-800 flex items-center gap-2 mb-2">
-                    <Sliders className="w-4 h-4 text-purple-600" />
-                    RAG Playground
-                  </h3>
-                  <p className="text-xs text-slate-500 font-mono mb-6">
-                    Enter queries to test how the RAG model responds based on your uploaded PDFs.
-                  </p>
-
-                  <form onSubmit={handleQueryTest} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-mono font-bold text-slate-600 mb-2 uppercase">
-                        Test Query
-                      </label>
-                      <textarea
-                        id="query-text"
-                        rows={4}
-                        placeholder="e.g. Ask details about your uploaded documents or course syllabus..."
-                        value={queryText}
-                        onChange={(e) => setQueryText(e.target.value)}
-                        className="w-full p-4 text-sm font-sans bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-600/30 focus:border-purple-600"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                      <input
-                        type="checkbox"
-                        id="generate-answer"
-                        checked={generateAnswer}
-                        onChange={(e) => setGenerateAnswer(e.target.checked)}
-                        className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500 cursor-pointer"
-                      />
-                      <label htmlFor="generate-answer" className="text-xs font-mono font-bold text-slate-700 cursor-pointer select-none">
-                        Generate Answer (with Gemini)
-                      </label>
-                    </div>
-
-                    <button
-                      id="btn-run-query"
-                      type="submit"
-                      disabled={isQuerying}
-                      className="w-full py-3.5 bg-[#1E192B] hover:bg-[#2b243d] text-white rounded-2xl font-mono text-sm font-bold shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                    >
-                      {isQuerying ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Querying Vector DB...
-                        </>
-                      ) : (
-                        <>
-                          <Brain className="w-4 h-4" />
-                          Execute Test Query
-                        </>
-                      )}
-                    </button>
-                  </form>
-                </div>
-              </div>
-
-              {/* RAG Results Column */}
-              <div className="lg:col-span-7 space-y-6">
-                {isQuerying ? (
-                  <div className="bg-white p-12 rounded-3xl border border-purple-100 shadow-sm flex flex-col items-center justify-center text-center min-h-[350px]">
-                    <div className="relative mb-6">
-                      <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center animate-ping absolute opacity-70"></div>
-                      <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Brain className="w-8 h-8 text-purple-600 animate-pulse" />
-                      </div>
-                    </div>
-                    <h4 className="text-sm font-bold font-mono text-slate-800 mb-1">Retrieving matching PDF segments</h4>
-                    <p className="text-xs text-slate-500 font-mono max-w-sm">
-                      Searching vector chunks and compiling response draft.
-                    </p>
-                  </div>
-                ) : playgroundResult ? (
-                  <div className="space-y-6">
-                    {/* Generative Answer Section */}
-                    {generateAnswer && (
-                      <div className="bg-white p-6 rounded-3xl border border-purple-100 shadow-sm">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <span className="text-[10px] font-bold font-mono bg-purple-900/10 text-purple-700 px-2.5 py-1 rounded-full border border-purple-200 uppercase tracking-wider">
-                              RAG Service Response
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-slate-500 font-bold">Confidence:</span>
-                            <span
-                              className={`px-2 py-0.5 text-xs font-mono font-bold rounded-lg ${
-                                playgroundResult.confidenceScore > 0.8
-                                  ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                  : playgroundResult.confidenceScore > 0.6
-                                  ? "bg-amber-100 text-amber-700 border border-amber-200"
-                                  : "bg-rose-100 text-rose-700 border border-rose-200"
-                              }`}
-                            >
-                              {(playgroundResult.confidenceScore * 100).toFixed(0)}%
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                          <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-line font-sans">
-                            {playgroundResult.answer}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Context Chunk References */}
-                    <div className="bg-white p-6 rounded-3xl border border-purple-100 shadow-sm">
-                      <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-                        <h4 className="text-sm font-bold font-mono text-slate-800 flex items-center gap-1.5">
-                          <Database className="w-4 h-4 text-indigo-500" />
-                          Retrieved PDF Chunks ({playgroundResult.chunks?.length || 0})
-                        </h4>
-                      </div>
-
-                      {playgroundResult.chunks && playgroundResult.chunks.length > 0 ? (
-                        <div className="space-y-3">
-                          {playgroundResult.chunks.map((chunk: any, index: number) => {
-                            const isExpanded = expandedChunkId === chunk.id;
-                            return (
-                              <div
-                                key={chunk.id || index}
-                                className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 hover:bg-white transition"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => setExpandedChunkId(isExpanded ? null : chunk.id)}
-                                  className="w-full px-4 py-3 flex items-center justify-between text-left cursor-pointer"
-                                >
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md">
-                                      Segment #{index + 1}
-                                    </span>
-                                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 bg-purple-100 text-purple-700 rounded-md uppercase">
-                                      {chunk.sourceType?.replace("_", " ") || "document"}
-                                    </span>
-                                    {chunk.score && (
-                                      <span className="text-[10px] font-mono text-slate-500">
-                                        Similarity: <strong>{(chunk.score * 100).toFixed(1)}%</strong>
-                                      </span>
-                                    )}
-                                  </div>
-                                  {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-slate-400" />
-                                  ) : (
-                                    <ChevronDown className="w-4 h-4 text-slate-400" />
-                                  )}
-                                </button>
-                                
-                                {isExpanded && (
-                                  <div className="px-4 pb-4 pt-1 border-t border-slate-100 text-xs font-mono text-slate-600 leading-relaxed bg-white">
-                                    <p className="whitespace-pre-line">{chunk.content}</p>
-                                    
-                                    <div className="mt-3 pt-3 border-t border-slate-50 flex justify-between text-[9px] text-slate-400">
-                                      <span>Chunk Index: {chunk.chunkIndex ?? 0}</span>
-                                      {chunk.sourceId && <span>Source ID: {chunk.sourceId}</span>}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="p-8 text-center text-slate-400 font-mono text-xs">
-                          No context chunks retrieved.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white p-12 rounded-3xl border border-purple-100 shadow-sm flex flex-col items-center justify-center text-center min-h-[350px] text-slate-400">
-                    <Info className="w-8 h-8 text-purple-300 mb-3" />
-                    <h4 className="text-sm font-bold font-mono text-slate-800 mb-1">RAG Playground Ready</h4>
-                    <p className="text-xs text-slate-500 font-mono max-w-sm">
-                      Submit a query to test how your model references the vector database.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* MANAGER TAB */}
           {activeTab === "manager" && (
             <motion.div
               key="manager-tab"

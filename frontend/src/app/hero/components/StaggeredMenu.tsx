@@ -1,5 +1,6 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
+import { GraduationCap } from 'lucide-react';
 import './StaggeredMenu.css';
 
 export interface StaggeredMenuItem {
@@ -421,14 +422,14 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       </div>
       <header className="staggered-menu-header" aria-label="Main navigation header">
         <div className="sm-logo" aria-label="Logo">
-          <img
-            src={logoUrl || '/logo.png'}
-            alt="Logo"
-            className="sm-logo-img"
-            draggable={false}
-            width={110}
-            height={24}
-          />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-[#100c28] text-white flex items-center justify-center font-extrabold text-xs shadow-xs">
+              <GraduationCap className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-extrabold text-[#100c28] tracking-tight text-base font-mono uppercase">
+              SEEKH
+            </span>
+          </div>
         </div>
         <button
           ref={toggleBtnRef}

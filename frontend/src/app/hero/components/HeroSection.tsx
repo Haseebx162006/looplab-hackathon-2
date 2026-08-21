@@ -7,7 +7,6 @@ import { HeroHeadline } from "./HeroHeadline";
 import { CourseOfferingsCard } from "./CourseOfferingsCard";
 import { StudentsChartCard } from "./StudentsChartCard";
 import { InstructorBadge } from "./InstructorBadge";
-import { TopicTagCloud } from "./TopicTagCloud";
 import { RobotHeroVisual } from "./RobotHeroVisual";
 import { WhyChooseSection } from "./WhyChooseSection";
 
@@ -46,11 +45,6 @@ export const HeroSection: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center gap-4 z-20 w-full lg:w-auto">
               <CourseOfferingsCard />
               <StudentsChartCard />
-            </div>
-
-            {/* Right Column: Tag Cloud Pills */}
-            <div className="z-20 w-full lg:w-auto flex justify-end">
-              <TopicTagCloud />
             </div>
           </div>
 

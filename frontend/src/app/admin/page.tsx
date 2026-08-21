@@ -12,15 +12,15 @@ import {
   Calendar,
   ClipboardList,
   ChevronRight,
-  UserX,
-  UserCheck,
   Video,
   ExternalLink,
-  Search,
-  Sparkles,
-  Info,
-  Clock,
-  ArrowRight
+  TrendingUp,
+  Activity,
+  ArrowRight,
+  BarChart as BarChartIcon,
+  Zap,
+  Target,
+  Award
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { HoverSidebar } from "@/components/layout/HoverSidebar";
@@ -29,13 +29,28 @@ import { useGetMeQuery } from "@/store/api/authApi";
 import {
   useGetPendingSubmissionsQuery,
   useReviewSubmissionMutation,
-  useGetAllUsersQuery,
-  useBlockUserMutation,
-  useUnblockUserMutation,
   useBookMentorCallMutation,
   useGetAdminBookingRequestsQuery,
-  useRespondToBookingRequestMutation
+  useRespondToBookingRequestMutation,
+  useGetAllUsersQuery
 } from "@/store/api/learningApi";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell
+} from "recharts";
+
+// Premium Colors for Pie Chart
+const COLORS = ['#8B5CF6', '#EC4899', '#3B82F6', '#10B981'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -57,12 +72,6 @@ export default function AdminDashboardPage() {
     }
   }, [userProfile, router]);
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState<"submissions" | "users" | "bookings">("submissions");
-
-  // Filter & Search State
-  const [userSearchQuery, setUserSearchQuery] = useState("");
-
   // Submissions State
   const { data: pendingSubmissions, refetch: refetchPending, isLoading: isSubmissionsLoading } = useGetPendingSubmissionsQuery(undefined, {
     skip: !userProfile || userProfile.user?.role !== "admin",
@@ -71,13 +80,6 @@ export default function AdminDashboardPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
   const [reviewComment, setReviewComment] = useState("");
 
-  // Users State
-  const { data: users, refetch: refetchUsers, isLoading: isUsersLoading } = useGetAllUsersQuery(undefined, {
-    skip: !userProfile || userProfile.user?.role !== "admin",
-  });
-  const [blockUser, { isLoading: isBlocking }] = useBlockUserMutation();
-  const [unblockUser, { isLoading: isUnblocking }] = useUnblockUserMutation();
-
   // Booking Modal / Form State
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedUserForBooking, setSelectedUserForBooking] = useState<any | null>(null);
@@ -85,7 +87,7 @@ export default function AdminDashboardPage() {
   const [bookingDescription, setBookingDescription] = useState("");
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
-  const [bookingDuration, setBookingDuration] = useState("30"); // minutes
+  const [bookingDuration, setBookingDuration] = useState("30"); 
   const [bookingResultLink, setBookingResultLink] = useState<string | null>(null);
 
   const [bookCall, { isLoading: isBookingCall }] = useBookMentorCallMutation();
@@ -94,6 +96,12 @@ export default function AdminDashboardPage() {
   const { data: adminBookingRequests, refetch: refetchAdminBookings } = useGetAdminBookingRequestsQuery(undefined, {
     skip: !userProfile || userProfile.user?.role !== "admin",
   });
+  
+  // Users State (For Total Students & Signups Trend)
+  const { data: allUsers } = useGetAllUsersQuery(undefined, {
+    skip: !userProfile || userProfile.user?.role !== "admin",
+  });
+  
   const [respondToBookingRequest, { isLoading: isRespondingToBooking }] = useRespondToBookingRequestMutation();
   const [selectedRequestForReview, setSelectedRequestForReview] = useState<any | null>(null);
   const [scheduledAtDate, setScheduledAtDate] = useState("");
@@ -156,38 +164,12 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Block/Unblock handlers
-  const handleBlockToggle = async (user: any) => {
-    try {
-      if (user.is_blocked) {
-        await unblockUser(user.id).unwrap();
-        toast.success(`User ${user.name} successfully unblocked!`);
-      } else {
-        await blockUser(user.id).unwrap();
-        toast.error(`User ${user.name} has been blocked!`);
-      }
-      refetchUsers();
-    } catch (err: any) {
-      toast.error(err.data?.error || err.data?.message || err.message || "Failed to change user block status.");
-    }
-  };
-
-  // Open booking modal
-  const openBooking = (user: any) => {
-    setSelectedUserForBooking(user);
-    setBookingTitle(`Mentor Session with ${user.name}`);
-    setBookingDescription(`Adaptive Learning Checkpoint session with ${user.name}.`);
-    setBookingResultLink(null);
-    setShowBookingModal(true);
-  };
-
   // Book call handler
   const handleBookCallSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserForBooking) return;
 
     try {
-      // Calculate start and end ISO dates
       const startDateTime = new Date(`${bookingDate}T${bookingTime}:00`);
       const endDateTime = new Date(startDateTime.getTime() + parseInt(bookingDuration, 10) * 60 * 1000);
 
@@ -201,746 +183,632 @@ export default function AdminDashboardPage() {
 
       setBookingResultLink(result.meetLink);
       toast.success("Google Meet call booked successfully!");
-      refetchUsers();
     } catch (err: any) {
       toast.error(err.data?.error || err.data?.message || err.message || "Failed to book meeting.");
     }
   };
 
-  // Filtered users roster
-  const filteredUsers = users?.filter((u) => {
-    const query = userSearchQuery.toLowerCase();
-    return (
-      u.name.toLowerCase().includes(query) ||
-      u.email.toLowerCase().includes(query) ||
-      (u.career_goal || "").toLowerCase().includes(query)
-    );
-  });
-
   if (isUserLoading || (userProfile && userProfile.user?.role !== "admin")) {
     return (
-      <div className="min-h-screen bg-[#F5F2FA] flex flex-col justify-center items-center font-sans">
-        <Loader2 className="w-12 h-12 text-purple-600 animate-spin mb-4" />
-        <p className="text-sm font-mono text-slate-500">Checking credentials & loading mentor dashboard...</p>
+      <div className="min-h-screen bg-[#0F0A19] flex flex-col justify-center items-center font-sans">
+        <Loader2 className="w-16 h-16 text-[#A855F7] animate-spin mb-6" />
+        <p className="text-sm font-mono text-slate-400 tracking-widest uppercase">Initializing Command Center...</p>
       </div>
     );
   }
 
+  const pendingCount = pendingSubmissions?.length || 0;
+  const pendingCallsCount = adminBookingRequests?.filter((r: any) => r.status === 'pending').length || 0;
+  const totalCallsCount = adminBookingRequests?.length || 0;
+  const totalStudents = allUsers?.filter((u: any) => u.role === 'user').length || 0;
+
+  // Generate dynamic 7-day trend data
+  const activityTrendData = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    d.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(d);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const signups = allUsers?.filter((u: any) => {
+      if (!u.created_at) return false;
+      const created = new Date(u.created_at);
+      return created >= d && created <= endOfDay;
+    }).length || 0;
+
+    const meetings = adminBookingRequests?.filter((req: any) => {
+      if (!req.created_at) return false;
+      const created = new Date(req.created_at);
+      return created >= d && created <= endOfDay;
+    }).length || 0;
+
+    const shortDay = d.toLocaleDateString("en-US", { weekday: "short" });
+    return { name: shortDay, signups, meetings };
+  });
+
+  // Generate dynamic Active Pathways (Pie Chart) from user career goals
+  const goalCounts: Record<string, number> = {};
+  allUsers?.filter((u: any) => u.role === 'user').forEach((u: any) => {
+    let goal = u.career_goal ? u.career_goal.trim() : 'Undecided';
+    if (!goal) goal = 'Undecided';
+    goalCounts[goal] = (goalCounts[goal] || 0) + 1;
+  });
+  
+  let distributionData = Object.entries(goalCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([name, value]) => ({ 
+      name: name.length > 15 ? name.substring(0, 15) + '...' : name, 
+      value 
+    }));
+
+  if (distributionData.length === 0) {
+    distributionData = [{ name: 'No Data', value: 1 }];
+  }
+
+  // Generate dynamic Submission Velocity (Last 4 Days) from pendingSubmissions
+  const weeklyTasksData = Array.from({ length: 4 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (3 - i));
+    d.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(d);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const subsCount = pendingSubmissions?.filter((s: any) => {
+      if (!s.created_at) return false;
+      const created = new Date(s.created_at);
+      return created >= d && created <= endOfDay;
+    }).length || 0;
+
+    return { 
+      name: d.toLocaleDateString("en-US", { weekday: 'short' }), 
+      tasks: subsCount 
+    };
+  });
+
   return (
-    <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
+    <div data-lenis-prevent className="min-h-screen bg-[#F8F7FC] flex font-sans selection:bg-[#9333EA] selection:text-white">
       <HoverSidebar />
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{ className: 'font-mono text-sm shadow-2xl rounded-2xl border border-[#E9D5FF] bg-white' }} />
 
-      {/* Main Body */}
-      <main className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 max-w-7xl overflow-x-hidden">
-        {/* Header bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-mono text-slate-900">
-                Mentor Hub
-              </h1>
-              <span className="px-2.5 py-1 bg-purple-900/10 text-purple-700 text-[10px] font-extrabold font-mono rounded-full border border-purple-200">
-                ADMIN CONSOLE
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 font-mono mt-1">
-              Approve student exercises, manage system accounts, and coordinate video check-ins.
-            </p>
-          </div>
+      <main className="flex-1 ml-0 md:ml-20 pb-32 w-full max-w-[1920px] mx-auto overflow-x-hidden">
+        
+        {/* MASSIVE HERO BANNER */}
+        <div className="relative w-full h-[400px] overflow-hidden bg-slate-900 rounded-b-[3rem] shadow-2xl">
+           <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+           <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[140%] bg-[#7C3AED] rounded-full blur-[120px] opacity-40 animate-pulse"></div>
+           <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[140%] bg-[#EC4899] rounded-full blur-[150px] opacity-30"></div>
+           <div className="absolute top-[20%] right-[20%] w-[30%] h-[80%] bg-[#3B82F6] rounded-full blur-[100px] opacity-30"></div>
+           
+           <div className="relative z-10 p-8 md:p-14 h-full flex flex-col justify-between">
+              <div className="flex justify-between items-start">
+                 <div>
+                    <motion.div initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/20 mb-4">
+                      <Zap className="w-4 h-4 text-yellow-300" />
+                      <span className="text-white text-[10px] font-mono font-bold tracking-widest uppercase">Admin Telemetry Online</span>
+                    </motion.div>
+                    <motion.h1 initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{delay: 0.1}} className="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
+                       Command <br/>Center.
+                    </motion.h1>
+                 </div>
+                 <div className="hidden md:flex gap-3">
+                   <button onClick={() => router.push("/admin/users")} className="px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-lg border border-white/20 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-xl flex items-center gap-2 group cursor-pointer">
+                     <Users className="w-4 h-4" /> Manage Roster
+                     <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                   </button>
+                 </div>
+              </div>
 
-          {/* Tab Selector */}
-          <div className="flex bg-slate-200/80 p-1.5 rounded-2xl border border-purple-100 font-mono text-xs font-semibold">
-            <button
-              onClick={() => setActiveTab("submissions")}
-              className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === "submissions"
-                  ? "bg-[#1E192B] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <ClipboardList className="w-4 h-4" />
-              <span>Pending Reviews</span>
-              {pendingSubmissions && pendingSubmissions.length > 0 && (
-                <span className="w-5 h-5 bg-red-500 text-[10px] text-white flex items-center justify-center rounded-full">
-                  {pendingSubmissions.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === "users"
-                  ? "bg-[#1E192B] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>User Roster</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("bookings")}
-              className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeTab === "bookings"
-                  ? "bg-[#1E192B] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-              <span>Call Requests</span>
-              {adminBookingRequests && adminBookingRequests.filter((r: any) => r.status === 'pending').length > 0 && (
-                <span className="w-5 h-5 bg-red-500 text-[10px] text-white flex items-center justify-center rounded-full">
-                  {adminBookingRequests.filter((r: any) => r.status === 'pending').length}
-                </span>
-              )}
-            </button>
-          </div>
+              {/* FLOATING GLASS KPI CARDS OVERLAID ON BANNER */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                 <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.2}} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                       <Users className="w-24 h-24 text-white" />
+                    </div>
+                    <p className="text-[10px] font-mono font-bold text-purple-200 uppercase tracking-widest mb-1">Active Students</p>
+                    <h3 className="text-3xl font-black text-white">{totalStudents}</h3>
+                 </motion.div>
+
+                 <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.3}} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                       <ClipboardList className="w-24 h-24 text-white" />
+                    </div>
+                    <p className="text-[10px] font-mono font-bold text-pink-200 uppercase tracking-widest mb-1">Pending Reviews</p>
+                    <div className="flex items-end gap-3">
+                       <h3 className="text-3xl font-black text-white">{pendingCount}</h3>
+                       {pendingCount > 0 && <span className="mb-1 px-2 py-0.5 bg-pink-500/20 text-pink-300 text-[9px] rounded-full border border-pink-500/30 font-bold flex items-center gap-1 animate-pulse"><Activity className="w-3 h-3"/> Action</span>}
+                    </div>
+                 </motion.div>
+
+                 <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.4}} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                       <Calendar className="w-24 h-24 text-white" />
+                    </div>
+                    <p className="text-[10px] font-mono font-bold text-blue-200 uppercase tracking-widest mb-1">Call Requests</p>
+                    <div className="flex items-end gap-3">
+                       <h3 className="text-3xl font-black text-white">{totalCallsCount}</h3>
+                       {pendingCallsCount > 0 && <span className="mb-1 px-2 py-0.5 bg-blue-500/20 text-blue-300 text-[9px] rounded-full border border-blue-500/30 font-bold flex items-center gap-1"><Activity className="w-3 h-3"/> {pendingCallsCount} Pend</span>}
+                    </div>
+                 </motion.div>
+
+                 <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.5}} className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all">
+                       <Award className="w-24 h-24 text-white" />
+                    </div>
+                    <p className="text-[10px] font-mono font-bold text-emerald-200 uppercase tracking-widest mb-1">Avg Resolution Time</p>
+                    <h3 className="text-3xl font-black text-white">4.2<span className="text-lg text-emerald-200 font-bold ml-1">hrs</span></h3>
+                 </motion.div>
+              </div>
+           </div>
         </div>
 
-        {/* Tab Content Rendering */}
-        <AnimatePresence mode="wait">
-          {activeTab === "submissions" ? (
-            <motion.div
-              key="submissions-tab"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-            >
-              {/* Submissions List */}
-              <div className="lg:col-span-2 space-y-4">
-                <div className="bg-white border border-purple-100 rounded-3xl p-6 shadow-xs">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-bold font-mono text-slate-800 uppercase tracking-wider">
-                      Student Submissions
+        {/* CONTENT GRID */}
+        <div className="px-6 md:px-10 -mt-6 relative z-20 space-y-8">
+           
+           {/* MULTI-CHART ANALYTICS ROW */}
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Main Area Chart */}
+              <div className="lg:col-span-2 bg-white/80 backdrop-blur-xl border border-[#E9D5FF] rounded-3xl p-6 shadow-xl flex flex-col h-[350px]">
+                 <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xs font-bold font-mono text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                       <TrendingUp className="w-4 h-4 text-[#9333EA]" /> Platform Engagement (7-Day)
                     </h3>
-                    <span className="px-2.5 py-1 bg-red-50 border border-red-200 text-red-700 text-[10px] font-mono rounded-full font-bold">
-                      {pendingSubmissions?.length || 0} Awaiting Action
-                    </span>
-                  </div>
-
-                  {isSubmissionsLoading ? (
-                    <div className="p-10 flex flex-col justify-center items-center">
-                      <Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-2" />
-                      <span className="text-xs text-slate-400 font-mono">Loading exercises...</span>
-                    </div>
-                  ) : pendingSubmissions && pendingSubmissions.length > 0 ? (
-                    <div className="space-y-3">
-                      {pendingSubmissions.map((sub) => (
-                        <div
-                          key={sub.id}
-                          onClick={() => setSelectedSubmission(sub)}
-                          className={`p-4 border rounded-2xl cursor-pointer transition-all flex items-center justify-between gap-4 ${
-                            selectedSubmission?.id === sub.id
-                              ? "border-purple-600 bg-purple-50/15 shadow-sm"
-                              : "border-purple-50 hover:border-purple-100 hover:bg-purple-50/5"
-                          }`}
-                        >
-                          <div>
-                            <h4 className="text-xs font-bold font-mono text-slate-800">{sub.task_title}</h4>
-                            <p className="text-[10px] text-slate-500 font-mono mt-1">
-                              By {sub.student_name} ({sub.student_email})
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-[9px] text-slate-400 font-mono block">
-                              Submitted {new Date(sub.created_at).toLocaleDateString()}
-                            </span>
-                            <span className="text-[10px] font-bold text-purple-700 font-mono mt-1 inline-flex items-center gap-0.5">
-                              Open Review <ChevronRight className="w-3.5 h-3.5" />
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-12 text-center border border-dashed border-purple-100 rounded-3xl">
-                      <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-2" />
-                      <p className="text-xs text-slate-500 font-mono">
-                        Workspace clean! No pending task reviews.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                    <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-[10px] font-bold font-mono border border-purple-100">Live Sync</span>
+                 </div>
+                 <div className="flex-1 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                       <AreaChart data={activityTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                             <linearGradient id="colorSignups" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#9333EA" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="#9333EA" stopOpacity={0}/>
+                             </linearGradient>
+                             <linearGradient id="colorMeetings" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#EC4899" stopOpacity={0.4}/>
+                                <stop offset="95%" stopColor="#EC4899" stopOpacity={0}/>
+                             </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B', fontFamily: 'monospace' }} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748B', fontFamily: 'monospace' }} />
+                          <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', fontFamily: 'monospace', fontSize: '12px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)' }} />
+                          <Area type="monotone" dataKey="signups" stroke="#9333EA" strokeWidth={4} fillOpacity={1} fill="url(#colorSignups)" name="Signups" activeDot={{r: 6, fill: '#9333EA', stroke: '#fff', strokeWidth: 2}} />
+                          <Area type="monotone" dataKey="meetings" stroke="#EC4899" strokeWidth={4} fillOpacity={1} fill="url(#colorMeetings)" name="Meetings" activeDot={{r: 6, fill: '#EC4899', stroke: '#fff', strokeWidth: 2}} />
+                       </AreaChart>
+                    </ResponsiveContainer>
+                 </div>
               </div>
 
-              {/* Review Console Panel */}
-              <div>
-                <AnimatePresence mode="wait">
-                  {selectedSubmission ? (
-                    <motion.div
-                      key={selectedSubmission.id}
-                      initial={{ opacity: 0, x: 15 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 15 }}
-                      className="bg-white border border-purple-100 rounded-3xl p-6 shadow-xs space-y-6"
-                    >
-                      <div>
-                        <span className="text-[9px] font-bold font-mono text-purple-600 uppercase tracking-widest block">
-                          Review Terminal
-                        </span>
-                        <h3 className="text-sm font-bold font-mono text-slate-800 mt-1.5">
-                          {selectedSubmission.task_title}
-                        </h3>
-                        <div className="p-3 bg-purple-50/40 rounded-xl mt-3 space-y-1">
-                          <p className="text-[10px] font-mono text-slate-600">
-                            <strong>Student:</strong> {selectedSubmission.student_name}
-                          </p>
-                          <p className="text-[10px] font-mono text-slate-600">
-                            <strong>Email:</strong> {selectedSubmission.student_email}
-                          </p>
-                        </div>
-                      </div>
-
-                      {selectedSubmission.content && (
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                            Submitted Exercise Answer
-                          </label>
-                          <div className="p-4 border border-purple-50 rounded-2xl bg-slate-900 text-xs font-mono text-emerald-400 whitespace-pre-wrap break-all max-h-56 overflow-y-auto shadow-inner leading-relaxed">
-                            {selectedSubmission.content}
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedSubmission.links && selectedSubmission.links.length > 0 && (
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                            Submitted Links
-                          </label>
-                          <div className="p-3 border border-purple-50 rounded-2xl bg-slate-900 text-xs font-mono text-emerald-400 space-y-1.5 max-h-36 overflow-y-auto shadow-inner">
-                            {selectedSubmission.links.map((link: string, idx: number) => (
-                              <a
-                                key={idx}
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1.5 break-all"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                                {link}
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                          Feedback Comment (Optional)
-                        </label>
-                        <textarea
-                          value={reviewComment}
-                          onChange={(e) => setReviewComment(e.target.value)}
-                          placeholder="Provide constructive feedback. Students will see this in their roadmap details..."
-                          className="w-full h-24 p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs resize-none"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 pt-2">
-                        <button
-                          onClick={() => handleReview("reject")}
-                          disabled={isReviewing}
-                          className="flex items-center justify-center gap-1.5 py-3 bg-red-50 hover:bg-red-150 text-red-700 border border-red-200 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                        >
-                          <XCircle className="w-4 h-4" /> 
-                          <span>Ask for Recheck</span>
-                        </button>
-                        <button
-                          onClick={() => handleReview("approve")}
-                          disabled={isReviewing}
-                          className="flex items-center justify-center gap-1.5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
-                        >
-                          <CheckCircle className="w-4 h-4" /> 
-                          <span>Approve Task</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="no-submission-selection"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="p-8 text-center border border-purple-150 bg-purple-50/5 rounded-3xl"
-                    >
-                      <ClipboardList className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                      <p className="text-xs text-slate-500 font-mono">
-                        Select a student submission from the list to view its code/answer and perform review actions.
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          ) : activeTab === "users" ? (
-            /* Users Roster List */
-            <motion.div
-              key="users-tab"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
-            >
-              <div className="bg-white border border-purple-100 rounded-3xl p-6 shadow-xs">
-                {/* Search Header */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
-                  <h3 className="text-sm font-bold font-mono text-slate-800 uppercase tracking-wider">
-                    Student & System Users ({filteredUsers?.length || 0})
-                  </h3>
-                  <div className="relative w-full sm:w-72">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Search users name, email..."
-                      value={userSearchQuery}
-                      onChange={(e) => setUserSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs"
-                    />
-                  </div>
-                </div>
-
-                {isUsersLoading ? (
-                  <div className="p-10 flex flex-col justify-center items-center">
-                    <Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-2" />
-                    <span className="text-xs text-slate-400 font-mono">Loading rosters...</span>
-                  </div>
-                ) : filteredUsers && filteredUsers.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left font-mono text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[9px]">
-                          <th className="pb-3 pl-2">Name</th>
-                          <th className="pb-3">Email</th>
-                          <th className="pb-3">Onboarding</th>
-                          <th className="pb-3">Career Target</th>
-                          <th className="pb-3">Role</th>
-                          <th className="pb-3 text-right pr-2">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {filteredUsers.map((user) => (
-                          <tr
-                            key={user.id}
-                            className={`hover:bg-purple-50/10 transition-colors ${
-                              user.is_blocked ? "bg-red-50/10 text-slate-400" : ""
-                            }`}
-                          >
-                            <td className="py-4 pl-2 font-semibold flex items-center gap-2">
-                              <span>{user.name}</span>
-                              {user.is_blocked && (
-                                <span className="px-1.5 py-0.5 bg-red-100 border border-red-200 text-red-700 text-[8px] font-bold rounded-sm uppercase">
-                                  Blocked
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-4">{user.email}</td>
-                            <td className="py-4">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                                  user.profile_complete
-                                    ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
-                                    : "bg-amber-50 border border-amber-200 text-amber-700"
-                                }`}
-                              >
-                                {user.profile_complete ? "Complete" : "Incomplete"}
-                              </span>
-                            </td>
-                            <td className="py-4 text-slate-700 truncate max-w-xs">
-                              {user.career_goal || "Not set"}
-                            </td>
-                            <td className="py-4 capitalize font-semibold">{user.role}</td>
-                            <td className="py-4 text-right pr-2 space-x-2 shrink-0 whitespace-nowrap">
-                              {/* Block/Unblock toggle */}
-                              <button
-                                onClick={() => handleBlockToggle(user)}
-                                disabled={isBlocking || isUnblocking}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                                  user.is_blocked
-                                    ? "bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100"
-                                    : "bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
-                                }`}
-                              >
-                                {user.is_blocked ? (
-                                  <>
-                                    <UserCheck className="w-3.5 h-3.5" />
-                                    <span>Unblock</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserX className="w-3.5 h-3.5" />
-                                    <span>Block</span>
-                                  </>
-                                )}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="p-8 text-center border border-dashed border-purple-100 rounded-3xl">
-                    <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                    <p className="text-xs text-slate-500 font-mono">No users found matching query.</p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ) : (
-            /* Bookings tab */
-            <motion.div
-              key="bookings-tab"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-            >
-              {/* Bookings List */}
-              <div className="lg:col-span-2 space-y-4">
-                <div className="bg-white border border-purple-100 rounded-3xl p-6 shadow-xs">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-bold font-mono text-slate-800 uppercase tracking-wider">
-                      Mentor Call Requests
+              {/* Right Charts Stack */}
+              <div className="flex flex-col gap-6">
+                 {/* Pie Chart */}
+                 <div className="bg-white/80 backdrop-blur-xl border border-[#E9D5FF] rounded-3xl p-6 shadow-xl flex-1 flex flex-col justify-between">
+                    <h3 className="text-xs font-bold font-mono text-slate-800 uppercase tracking-wider flex items-center gap-2 mb-2">
+                       <Target className="w-4 h-4 text-[#EC4899]" /> Active Pathways
                     </h3>
-                    <span className="px-2.5 py-1 bg-red-50 border border-red-200 text-red-700 text-[10px] font-mono rounded-full font-bold font-extrabold font-mono">
-                      {adminBookingRequests?.filter((r: any) => r.status === 'pending').length || 0} Pending
-                    </span>
-                  </div>
-
-                  {adminBookingRequests && adminBookingRequests.length > 0 ? (
-                    <div className="space-y-3">
-                      {adminBookingRequests.map((req: any) => {
-                        let statusColor = "bg-slate-100 text-slate-605 border-slate-200";
-                        if (req.status === "approved") {
-                          statusColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                        } else if (req.status === "rejected") {
-                          statusColor = "bg-red-50 text-red-700 border-red-200";
-                        } else {
-                          statusColor = "bg-purple-50 text-purple-700 border-purple-200";
-                        }
-
-                        return (
-                          <div
-                            key={req.id}
-                            onClick={() => {
-                              if (req.status === 'pending') {
-                                setSelectedRequestForReview(req);
-                              }
-                            }}
-                            className={`p-4 border rounded-2xl transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${
-                              req.status === 'pending' ? 'cursor-pointer hover:border-purple-105 hover:bg-purple-50/5' : ''
-                            } ${
-                              selectedRequestForReview?.id === req.id
-                                ? "border-purple-600 bg-purple-50/15 shadow-xs"
-                                : "border-purple-50"
-                            }`}
-                          >
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="text-xs font-bold font-mono text-slate-700">{req.title}</h4>
-                                <span className={`px-2 py-0.5 text-[8px] font-bold font-mono rounded-md uppercase border ${statusColor}`}>
-                                  {req.status}
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-slate-450 font-mono">
-                                Student: {req.student_name} ({req.student_email})
-                              </p>
-                              {req.description && (
-                                <p className="text-[10px] font-mono text-slate-500 bg-slate-50 border border-slate-100 p-2 rounded-lg mt-1">
-                                  "{req.description}"
-                                </p>
-                              )}
-                            </div>
-                            <div className="text-right shrink-0 font-mono text-[9px] text-slate-400">
-                              {req.status === 'approved' ? (
-                                <div className="space-y-1">
-                                  <span className="block text-slate-655 font-bold">Scheduled: {new Date(req.scheduled_at).toLocaleDateString()}</span>
-                                  <a
-                                    href={req.meet_link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-purple-600 hover:underline font-semibold"
-                                  >
-                                    <ExternalLink className="w-3 h-3" /> Meet Link
-                                  </a>
-                                </div>
-                              ) : (
-                                <span>Requested {new Date(req.created_at).toLocaleDateString()}</span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="flex-1 w-full flex items-center justify-center -ml-4">
+                       <ResponsiveContainer width="100%" height={120}>
+                          <PieChart>
+                             <Pie data={distributionData} cx="50%" cy="50%" innerRadius={35} outerRadius={50} paddingAngle={5} dataKey="value">
+                                {distributionData.map((entry, index) => (
+                                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                             </Pie>
+                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontFamily: 'monospace', fontSize: '10px' }} />
+                          </PieChart>
+                       </ResponsiveContainer>
+                       <div className="flex flex-col gap-2 font-mono text-[9px] shrink-0">
+                          {distributionData.map((d, i) => (
+                             <div key={d.name} className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full" style={{backgroundColor: COLORS[i % COLORS.length]}}></div>
+                                <span className="text-slate-600">{d.name}</span>
+                             </div>
+                          ))}
+                       </div>
                     </div>
-                  ) : (
-                    <div className="p-10 text-center border border-dashed border-purple-100 rounded-3xl">
-                      <Calendar className="w-12 h-12 text-slate-350 mx-auto mb-2" />
-                      <p className="text-xs text-slate-505 font-mono">No call requests submitted yet.</p>
+                 </div>
+
+                 {/* Bar Chart */}
+                 <div className="bg-white/80 backdrop-blur-xl border border-[#E9D5FF] rounded-3xl p-6 shadow-xl flex-1 flex flex-col justify-between">
+                    <h3 className="text-xs font-bold font-mono text-slate-800 uppercase tracking-wider flex items-center gap-2 mb-4">
+                       <BarChartIcon className="w-4 h-4 text-[#3B82F6]" /> Submission Velocity
+                    </h3>
+                    <div className="flex-1 w-full">
+                       <ResponsiveContainer width="100%" height={100}>
+                          <BarChart data={weeklyTasksData} margin={{top: 0, right: 0, left: -25, bottom: 0}}>
+                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8', fontFamily: 'monospace' }} />
+                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8', fontFamily: 'monospace' }} />
+                             <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontFamily: 'monospace', fontSize: '10px' }} />
+                             <Bar dataKey="tasks" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={20} />
+                          </BarChart>
+                       </ResponsiveContainer>
                     </div>
-                  )}
-                </div>
+                 </div>
+              </div>
+           </div>
+
+           {/* LISTS GRID */}
+           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              
+              {/* Pending Submissions */}
+              <div className="bg-white/80 backdrop-blur-xl border border-[#E9D5FF] rounded-3xl p-6 shadow-xl flex flex-col h-[600px] relative overflow-hidden group">
+                 {/* Decorative background flare */}
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-purple-300/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+
+                 <div className="flex items-center justify-between mb-6 relative z-10">
+                   <h3 className="text-sm font-bold font-mono text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                     <ClipboardList className="w-5 h-5 text-[#9333EA]" /> 
+                     Task Inbox
+                   </h3>
+                   {pendingCount > 0 && (
+                     <span className="px-3 py-1 bg-pink-50 border border-pink-200 text-pink-700 text-[10px] font-mono rounded-full font-bold uppercase tracking-wider shadow-xs">
+                       {pendingCount} Awaiting
+                     </span>
+                   )}
+                 </div>
+
+                 {/* Selected Submission Review View */}
+                 <AnimatePresence mode="wait">
+                   {selectedSubmission ? (
+                     <motion.div
+                       key="reviewing"
+                       initial={{ opacity: 0, x: -10 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       exit={{ opacity: 0, x: 10 }}
+                       className="flex flex-col h-full bg-slate-900 rounded-[2rem] p-6 border border-slate-800 shadow-2xl relative z-10"
+                     >
+                       <button 
+                         onClick={() => { setSelectedSubmission(null); setReviewComment(""); }}
+                         className="absolute top-5 right-5 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors cursor-pointer"
+                       >
+                         <ArrowRight className="w-4 h-4" />
+                       </button>
+
+                       <span className="text-[10px] font-bold font-mono text-[#A855F7] uppercase tracking-widest block mb-1">
+                         Review Terminal
+                       </span>
+                       <h3 className="text-base font-bold font-mono text-white pr-10 leading-tight">
+                         {selectedSubmission.task_title}
+                       </h3>
+                       <div className="text-[10px] font-mono text-slate-400 mt-1.5 pb-4 border-b border-slate-800 flex items-center gap-2">
+                         <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-white text-[8px] font-bold">
+                           {selectedSubmission.student_name?.[0] || 'S'}
+                         </div>
+                         {selectedSubmission.student_name}
+                       </div>
+
+                       <div className="flex-1 overflow-y-auto mt-5 space-y-5 pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                         {selectedSubmission.content && (
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Student Solution
+                             </label>
+                             <div className="p-4 border border-slate-700/50 rounded-2xl bg-black/50 text-xs font-mono text-emerald-400 whitespace-pre-wrap break-all shadow-inner leading-relaxed">
+                               {selectedSubmission.content}
+                             </div>
+                           </div>
+                         )}
+
+                         {selectedSubmission.links && selectedSubmission.links.length > 0 && (
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                               <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Attached Resources
+                             </label>
+                             <div className="p-3 border border-slate-700/50 rounded-2xl bg-black/50 text-xs font-mono space-y-2">
+                               {selectedSubmission.links.map((link: string, idx: number) => (
+                                 <a
+                                   key={idx}
+                                   href={link}
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   className="text-[#60A5FA] hover:text-[#93C5FD] hover:underline flex items-center gap-2 break-all bg-white/5 p-2 rounded-xl"
+                                 >
+                                   <ExternalLink className="w-3 h-3 shrink-0" />
+                                   {link}
+                                 </a>
+                               ))}
+                             </div>
+                           </div>
+                         )}
+                         
+                         <div className="space-y-2">
+                           <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block mt-2">
+                             Feedback Protocol
+                           </label>
+                           <textarea
+                             value={reviewComment}
+                             onChange={(e) => setReviewComment(e.target.value)}
+                             placeholder="Provide constructive feedback for the student..."
+                             className="w-full h-24 p-4 bg-white/5 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-[#A855F7] focus:border-transparent outline-hidden font-mono text-xs text-white resize-none shadow-inner"
+                           />
+                         </div>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4 pt-5 mt-auto border-t border-slate-800">
+                         <button
+                           onClick={() => handleReview("reject")}
+                           disabled={isReviewing}
+                           className="flex items-center justify-center gap-2 py-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-2xl font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                         >
+                           <XCircle className="w-4 h-4" /> 
+                           Request Revisions
+                         </button>
+                         <button
+                           onClick={() => handleReview("approve")}
+                           disabled={isReviewing}
+                           className="flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-[#9333EA] to-[#EC4899] hover:from-[#7C3AED] hover:to-[#DB2777] text-white rounded-2xl font-mono text-xs font-bold transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)] hover:shadow-[0_0_30px_rgba(236,72,153,0.5)] cursor-pointer disabled:opacity-50"
+                         >
+                           <CheckCircle className="w-4 h-4" /> 
+                           Approve & Pass
+                         </button>
+                       </div>
+                     </motion.div>
+                   ) : (
+                     <motion.div
+                       key="list"
+                       initial={{ opacity: 0 }}
+                       animate={{ opacity: 1 }}
+                       exit={{ opacity: 0 }}
+                       className="flex-1 flex flex-col relative z-10"
+                     >
+                       {isSubmissionsLoading ? (
+                         <div className="flex-1 flex flex-col justify-center items-center">
+                           <Loader2 className="w-10 h-10 text-[#9333EA] animate-spin mb-4" />
+                           <span className="text-xs text-slate-400 font-mono tracking-widest uppercase">Fetching Submissions...</span>
+                         </div>
+                       ) : pendingSubmissions && pendingSubmissions.length > 0 ? (
+                         <div className="space-y-4 overflow-y-auto pr-2 max-h-[500px] scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-transparent">
+                           {pendingSubmissions.map((sub: any, idx: number) => (
+                             <motion.div
+                               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                               key={sub.id}
+                               onClick={() => setSelectedSubmission(sub)}
+                               className="p-5 bg-white border border-slate-200 hover:border-[#A855F7] rounded-2xl cursor-pointer transition-all flex items-center justify-between gap-4 group hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+                             >
+                               <div className="flex gap-4 items-center">
+                                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#9333EA] group-hover:text-white transition-all shadow-sm">
+                                    <ClipboardList className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-xs font-bold font-mono text-slate-800 group-hover:text-[#9333EA] transition-colors">{sub.task_title}</h4>
+                                    <p className="text-[10px] text-slate-500 font-mono mt-1 flex items-center gap-1.5">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> {sub.student_name}
+                                    </p>
+                                  </div>
+                               </div>
+                               <div className="text-right shrink-0">
+                                 <span className="text-[9px] text-slate-400 font-mono block">
+                                   {new Date(sub.created_at).toLocaleDateString()}
+                                 </span>
+                                 <span className="text-[10px] font-bold text-[#9333EA] font-mono mt-2 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 bg-purple-50 px-2 py-0.5 rounded-md">
+                                   Review <ChevronRight className="w-3 h-3" />
+                                 </span>
+                               </div>
+                             </motion.div>
+                           ))}
+                         </div>
+                       ) : (
+                         <div className="flex-1 flex flex-col justify-center items-center text-center p-12 border-2 border-dashed border-[#E9D5FF] bg-white/50 rounded-[2rem]">
+                           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-5 shadow-inner">
+                              <CheckCircle className="w-10 h-10 text-emerald-500" />
+                           </div>
+                           <h4 className="font-black text-slate-800 text-lg">Inbox Zero</h4>
+                           <p className="text-xs text-slate-500 font-mono mt-2 max-w-[250px] leading-relaxed">
+                             Excellent work! You are completely caught up with all student submissions.
+                           </p>
+                         </div>
+                       )}
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
               </div>
 
-              {/* Right Column: Respond Console */}
-              <div>
-                <AnimatePresence mode="wait">
-                  {selectedRequestForReview ? (
-                    <motion.div
-                      key={selectedRequestForReview.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="bg-white border border-purple-100 rounded-3xl p-5 shadow-xs space-y-5"
-                    >
-                      <div>
-                        <span className="text-[9px] font-bold font-mono text-slate-400 uppercase font-bold text-[10px]">Call Request Review</span>
-                        <h3 className="text-sm font-bold font-mono text-slate-808 mt-1 text-slate-800">{selectedRequestForReview.title}</h3>
-                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">Student: {selectedRequestForReview.student_name}</p>
-                      </div>
+              {/* Call Requests */}
+              <div className="bg-white/80 backdrop-blur-xl border border-[#E9D5FF] rounded-3xl p-6 shadow-xl flex flex-col h-[600px] relative overflow-hidden group">
+                 {/* Decorative background flare */}
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-pink-300/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
 
-                      {selectedRequestForReview.description && (
-                        <div className="space-y-1.5 text-left">
-                          <label className="text-[10px] font-bold font-mono text-slate-500">Student Details</label>
-                          <div className="p-3 border border-purple-50 rounded-xl bg-purple-50/5 text-xs font-mono text-slate-700 whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
-                            {selectedRequestForReview.description}
-                          </div>
-                        </div>
-                      )}
+                 <div className="flex items-center justify-between mb-6 relative z-10">
+                   <h3 className="text-sm font-bold font-mono text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                     <Calendar className="w-5 h-5 text-[#EC4899]" /> 
+                     Meeting Requests
+                   </h3>
+                 </div>
 
-                      <div className="space-y-2 border-t border-purple-50 pt-3 text-left">
-                        <label className="text-[10px] font-bold font-mono text-slate-550 block">Schedule Date & Time</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={scheduledAtDate}
-                            onChange={(e) => setScheduledAtDate(e.target.value)}
-                            className="p-2 border border-purple-100 rounded-xl font-mono text-xs cursor-pointer bg-white text-slate-700"
-                          />
-                          <input
-                            type="time"
-                            value={scheduledAtTime}
-                            onChange={(e) => setScheduledAtTime(e.target.value)}
-                            className="p-2 border border-purple-100 rounded-xl font-mono text-xs cursor-pointer bg-white text-slate-700"
-                          />
-                        </div>
-                      </div>
+                 <AnimatePresence mode="wait">
+                   {selectedRequestForReview ? (
+                     <motion.div
+                       key="scheduling"
+                       initial={{ opacity: 0, x: -10 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       exit={{ opacity: 0, x: 10 }}
+                       className="flex flex-col h-full bg-slate-900 rounded-[2rem] p-6 border border-slate-800 shadow-2xl relative z-10"
+                     >
+                       <button 
+                         onClick={() => setSelectedRequestForReview(null)}
+                         className="absolute top-5 right-5 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors cursor-pointer"
+                       >
+                         <ArrowRight className="w-4 h-4" />
+                       </button>
 
-                      <div className="space-y-1.5 text-left">
-                        <label className="text-[10px] font-bold font-mono text-slate-500 block">Feedback Comment (Optional)</label>
-                        <textarea
-                          value={adminResponseComment}
-                          onChange={(e) => setAdminResponseComment(e.target.value)}
-                          placeholder="Provide details about Meet agenda, or explain reject reason..."
-                          className="w-full h-24 p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs resize-none text-slate-700 bg-white"
-                        />
-                      </div>
+                       <span className="text-[10px] font-bold font-mono text-[#EC4899] uppercase tracking-widest block mb-1">
+                         Scheduling Uplink
+                       </span>
+                       <h3 className="text-base font-bold font-mono text-white pr-10 leading-tight">
+                         {selectedRequestForReview.title}
+                       </h3>
+                       <div className="text-[10px] font-mono text-slate-400 mt-1.5 pb-4 border-b border-slate-800 flex items-center gap-2">
+                         <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-500 flex items-center justify-center text-white text-[8px] font-bold">
+                           {selectedRequestForReview.student_name?.[0] || 'S'}
+                         </div>
+                         {selectedRequestForReview.student_name}
+                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 pt-2">
-                        <button
-                          onClick={() => handleRespondToBooking("reject")}
-                          disabled={isRespondingToBooking}
-                          className="flex items-center justify-center gap-1.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                        >
-                          <XCircle className="w-4 h-4" /> Reject Request
-                        </button>
-                        <button
-                          onClick={() => handleRespondToBooking("approve")}
-                          disabled={isRespondingToBooking}
-                          className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                        >
-                          <CheckCircle className="w-4 h-4" /> Accept Call
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => setSelectedRequestForReview(null)}
-                        className="w-full py-2 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl font-mono text-[10px] font-bold transition-colors cursor-pointer"
-                      >
-                        Close
-                      </button>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="no-selection"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="p-6 text-center border border-purple-100 bg-purple-50/5 rounded-3xl"
-                    >
-                      <Calendar className="w-10 h-10 text-slate-350 mx-auto mb-2" />
-                      <p className="text-xs text-slate-505 font-mono">
-                        Select a pending call request from the list to view details and schedule check-in.
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                       <div className="flex-1 overflow-y-auto mt-5 space-y-5 pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                         {selectedRequestForReview.description && (
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                               <div className="w-1.5 h-1.5 rounded-full bg-[#EC4899]"></div> Agenda Notes
+                             </label>
+                             <div className="p-4 border border-slate-700/50 rounded-2xl bg-black/50 text-xs font-mono text-slate-300 whitespace-pre-wrap break-all shadow-inner leading-relaxed">
+                               {selectedRequestForReview.description}
+                             </div>
+                           </div>
+                         )}
+
+                         <div className="space-y-3 p-5 bg-white/5 border border-slate-700/50 rounded-2xl shadow-inner">
+                           <label className="text-[10px] font-bold font-mono text-[#A855F7] block uppercase tracking-wider flex items-center gap-2">
+                             <Calendar className="w-3 h-3" /> Assign Date & Time
+                           </label>
+                           <div className="grid grid-cols-2 gap-4">
+                             <input
+                               type="date"
+                               value={scheduledAtDate}
+                               onChange={(e) => setScheduledAtDate(e.target.value)}
+                               className="w-full p-3 bg-black/40 border border-slate-700 rounded-xl font-mono text-xs cursor-pointer text-white focus:ring-2 focus:ring-[#EC4899] focus:border-transparent outline-hidden"
+                             />
+                             <input
+                               type="time"
+                               value={scheduledAtTime}
+                               onChange={(e) => setScheduledAtTime(e.target.value)}
+                               className="w-full p-3 bg-black/40 border border-slate-700 rounded-xl font-mono text-xs cursor-pointer text-white focus:ring-2 focus:ring-[#EC4899] focus:border-transparent outline-hidden"
+                             />
+                           </div>
+                         </div>
+
+                         <div className="space-y-2">
+                           <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block mt-2">
+                             Meeting Instructions
+                           </label>
+                           <textarea
+                             value={adminResponseComment}
+                             onChange={(e) => setAdminResponseComment(e.target.value)}
+                             placeholder="Provide details about the Meet..."
+                             className="w-full h-20 p-4 bg-white/5 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-[#EC4899] focus:border-transparent outline-hidden font-mono text-xs text-white resize-none shadow-inner"
+                           />
+                         </div>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4 pt-5 mt-auto border-t border-slate-800">
+                         <button
+                           onClick={() => handleRespondToBooking("reject")}
+                           disabled={isRespondingToBooking}
+                           className="flex items-center justify-center gap-2 py-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-2xl font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                         >
+                           <XCircle className="w-4 h-4" /> Reject
+                         </button>
+                         <button
+                           onClick={() => handleRespondToBooking("approve")}
+                           disabled={isRespondingToBooking}
+                           className="flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] hover:from-[#DB2777] hover:to-[#7C3AED] text-white rounded-2xl font-mono text-xs font-bold transition-all shadow-[0_0_20px_rgba(236,72,153,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] cursor-pointer disabled:opacity-50"
+                         >
+                           <Video className="w-4 h-4" /> Confirm & Meet
+                         </button>
+                       </div>
+                     </motion.div>
+                   ) : (
+                     <motion.div
+                       key="requests-list"
+                       initial={{ opacity: 0 }}
+                       animate={{ opacity: 1 }}
+                       exit={{ opacity: 0 }}
+                       className="flex-1 flex flex-col relative z-10"
+                     >
+                       {adminBookingRequests && adminBookingRequests.length > 0 ? (
+                         <div className="space-y-4 overflow-y-auto pr-2 max-h-[500px] scrollbar-thin scrollbar-thumb-pink-200 scrollbar-track-transparent">
+                           {adminBookingRequests.map((req: any, idx: number) => {
+                             let statusColor = "bg-slate-100 text-slate-600 border-slate-200";
+                             let icon = <Calendar className="w-5 h-5" />;
+                             
+                             if (req.status === "approved") {
+                               statusColor = "bg-emerald-50 text-emerald-600 border-emerald-200";
+                               icon = <CheckCircle className="w-5 h-5 text-emerald-500" />;
+                             } else if (req.status === "rejected") {
+                               statusColor = "bg-red-50 text-red-600 border-red-200";
+                               icon = <XCircle className="w-5 h-5 text-red-500" />;
+                             } else {
+                               statusColor = "bg-pink-50 text-[#EC4899] border-pink-200";
+                             }
+
+                             return (
+                               <motion.div
+                                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                                 key={req.id}
+                                 onClick={() => {
+                                   if (req.status === 'pending') {
+                                     setSelectedRequestForReview(req);
+                                   }
+                                 }}
+                                 className={`p-5 bg-white border border-slate-200 rounded-2xl transition-all flex flex-col gap-3 group ${
+                                   req.status === 'pending' ? 'cursor-pointer hover:border-[#EC4899] hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)]' : ''
+                                 }`}
+                               >
+                                 <div className="flex gap-4 items-start">
+                                    <div className={`w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 shadow-sm ${req.status === 'pending' ? 'group-hover:scale-110 group-hover:bg-[#EC4899] group-hover:text-white transition-all' : ''}`}>
+                                      {icon}
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex justify-between items-start mb-1">
+                                         <h4 className="text-xs font-bold font-mono text-slate-800 line-clamp-1">{req.title}</h4>
+                                         <span className={`shrink-0 ml-2 px-2.5 py-0.5 text-[9px] font-bold font-mono rounded-md uppercase border shadow-xs ${statusColor}`}>
+                                           {req.status}
+                                         </span>
+                                      </div>
+                                      <p className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> {req.student_name}
+                                      </p>
+                                    </div>
+                                 </div>
+                                 
+                                 <div className="flex items-center justify-between mt-2 pt-3 border-t border-slate-100">
+                                   {req.status === 'approved' && req.meet_link ? (
+                                     <a
+                                       href={req.meet_link}
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       onClick={(e) => e.stopPropagation()}
+                                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 border border-blue-200 rounded-lg font-mono text-[10px] font-bold transition-colors shadow-sm"
+                                     >
+                                       <Video className="w-3.5 h-3.5" /> Join Meeting
+                                     </a>
+                                   ) : (
+                                     <span className="text-[9px] text-slate-400 font-mono block">
+                                       Requested on {new Date(req.created_at).toLocaleDateString()}
+                                     </span>
+                                   )}
+                                   
+                                   {req.status === 'pending' && (
+                                     <span className="text-[10px] font-bold text-[#EC4899] font-mono inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 bg-pink-50 px-2 py-0.5 rounded-md">
+                                       Schedule <ChevronRight className="w-3 h-3" />
+                                     </span>
+                                   )}
+                                 </div>
+                               </motion.div>
+                             );
+                           })}
+                         </div>
+                       ) : (
+                         <div className="flex-1 flex flex-col justify-center items-center text-center p-12 border-2 border-dashed border-[#E9D5FF] bg-white/50 rounded-[2rem]">
+                           <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-5 shadow-inner">
+                              <Calendar className="w-10 h-10 text-blue-400" />
+                           </div>
+                           <h4 className="font-black text-slate-800 text-lg">Clear Calendar</h4>
+                           <p className="text-xs text-slate-500 font-mono mt-2 max-w-[250px] leading-relaxed">
+                             Your scheduling queue is empty. No students have requested a meeting.
+                           </p>
+                         </div>
+                       )}
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
+           </div>
+        </div>
+
       </main>
-
-      {/* Booking Google Meet Modal */}
-      <AnimatePresence>
-        {showBookingModal && selectedUserForBooking && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border border-purple-100 rounded-3xl p-6 max-w-md w-full shadow-2xl relative space-y-5"
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-700">
-                    <Video className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold font-mono text-slate-800">Schedule Google Meet</h3>
-                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                      Inviting: {selectedUserForBooking.name} ({selectedUserForBooking.email})
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowBookingModal(false)}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer text-sm font-bold"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {!bookingResultLink ? (
-                <form onSubmit={handleBookCallSubmit} className="space-y-4">
-                  {/* Title */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                      Meeting Title
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={bookingTitle}
-                      onChange={(e) => setBookingTitle(e.target.value)}
-                      className="w-full p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs"
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                      Description
-                    </label>
-                    <textarea
-                      value={bookingDescription}
-                      onChange={(e) => setBookingDescription(e.target.value)}
-                      className="w-full h-16 p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs resize-none"
-                    />
-                  </div>
-
-                  {/* Date & Time */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                        Select Date
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={bookingDate}
-                        onChange={(e) => setBookingDate(e.target.value)}
-                        className="w-full p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                        Start Time
-                      </label>
-                      <input
-                        type="time"
-                        required
-                        value={bookingTime}
-                        onChange={(e) => setBookingTime(e.target.value)}
-                        className="w-full p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Duration */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold font-mono text-slate-500 uppercase tracking-wider block">
-                      Duration
-                    </label>
-                    <select
-                      value={bookingDuration}
-                      onChange={(e) => setBookingDuration(e.target.value)}
-                      className="w-full p-3 border border-purple-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs"
-                    >
-                      <option value="15">15 Minutes</option>
-                      <option value="30">30 Minutes</option>
-                      <option value="45">45 Minutes</option>
-                      <option value="60">60 Minutes (1 Hour)</option>
-                    </select>
-                  </div>
-
-                  {/* Submit button */}
-                  <button
-                    type="submit"
-                    disabled={isBookingCall}
-                    className="w-full flex items-center justify-center gap-1.5 py-3 bg-[#1E192B] hover:bg-purple-950 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
-                  >
-                    {isBookingCall ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Reserving Google Meet...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Calendar className="w-4 h-4" />
-                        <span>Confirm & Generate Call Link</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              ) : (
-                /* Success Link Screen */
-                <div className="space-y-4 pt-2 text-center font-mono">
-                  <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-800">Meeting Successfully Booked!</h4>
-                  <p className="text-[10px] text-slate-500">
-                    A calendar event has been scheduled and the invitation has been dispatched to {selectedUserForBooking.email}.
-                  </p>
-
-                  <div className="p-4 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-2">
-                    <span className="text-[9px] font-bold text-purple-600 uppercase block tracking-wider">
-                      Google Meet URL
-                    </span>
-                    <a
-                      href={bookingResultLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-semibold text-indigo-700 hover:underline flex items-center justify-center gap-1.5 break-all select-all font-mono"
-                    >
-                      <span>{bookingResultLink}</span>
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    </a>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setShowBookingModal(false);
-                      setBookingResultLink(null);
-                    }}
-                    className="w-full py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    Close Modal
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -111,7 +111,11 @@ export default function LoginPage() {
         setHasCompletedOnboarding(isProfileComplete);
         toast.success("Identity verified! Launching workspace...");
         setTimeout(() => {
-          router.push(isProfileComplete ? "/dashboard" : "/onboarding");
+          if (data.user?.role === "admin") {
+            router.push("/admin");
+          } else {
+            router.push(isProfileComplete ? "/dashboard" : "/onboarding");
+          }
         }, 1200);
       } else {
         throw new Error("Token missing from response");
@@ -139,7 +143,11 @@ export default function LoginPage() {
         setHasCompletedOnboarding(isProfileComplete);
         toast.success("Welcome back! Launching Seekh dashboard...");
         setTimeout(() => {
-          router.push(isProfileComplete ? "/dashboard" : "/onboarding");
+          if (data.user?.role === "admin") {
+            router.push("/admin");
+          } else {
+            router.push(isProfileComplete ? "/dashboard" : "/onboarding");
+          }
         }, 1000);
       } else {
         throw new Error("Token missing from response");

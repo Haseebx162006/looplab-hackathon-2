@@ -83,27 +83,33 @@ export const HoverSidebar: React.FC = () => {
 
   const activeNavItems = userProfile?.user?.role === "admin"
     ? [
-        {
-          id: "admin",
-          label: "Mentor Dashboard",
-          href: "/admin",
-          icon: ShieldCheck,
-          badge: "ADMIN",
-        },
-        {
-          id: "knowledge-base",
-          label: "Knowledge Base",
-          href: "/admin/knowledge-base",
-          icon: Brain,
-          badge: "RAG",
-        },
-        {
-          id: "settings",
-          label: "Account Settings",
-          href: "/settings",
-          icon: Settings,
-        }
-      ]
+      {
+        id: "admin",
+        label: "Mentor Dashboard",
+        href: "/admin",
+        icon: ShieldCheck,
+        badge: "ADMIN",
+      },
+      {
+        id: "admin-users",
+        label: "User Roster",
+        href: "/admin/users",
+        icon: Users,
+      },
+      {
+        id: "knowledge-base",
+        label: "Knowledge Base",
+        href: "/admin/knowledge-base",
+        icon: Brain,
+        badge: "RAG",
+      },
+      {
+        id: "settings",
+        label: "Account Settings",
+        href: "/settings",
+        icon: Settings,
+      }
+    ]
     : [...NAV_ITEMS];
 
   return (
@@ -136,9 +142,8 @@ export const HoverSidebar: React.FC = () => {
 
       {/* Mobile Slide-out Drawer */}
       <div
-        className={`fixed top-0 left-0 bottom-0 z-50 bg-[#1c1921] w-64 p-3 shadow-2xl flex flex-col justify-between transition-transform duration-300 md:hidden ${
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 left-0 bottom-0 z-50 bg-[#1c1921] w-64 p-3 shadow-2xl flex flex-col justify-between transition-transform duration-300 md:hidden ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="space-y-6">
           <div className="flex items-center justify-between px-2 py-1.5">
@@ -162,11 +167,10 @@ export const HoverSidebar: React.FC = () => {
               return (
                 <Link key={item.id} href={item.href} onClick={() => setIsMobileOpen(false)}>
                   <div
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
-                      isActive
-                        ? "bg-purple-700 text-white font-bold shadow-md"
-                        : "text-slate-400 hover:text-white hover:bg-white/10"
-                    }`}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${isActive
+                      ? "bg-purple-700 text-white font-bold shadow-md"
+                      : "text-slate-400 hover:text-white hover:bg-white/10"
+                      }`}
                   >
                     <Icon className="w-5 h-5 shrink-0" />
                     <span className="text-xs font-mono">{item.label}</span>
@@ -183,15 +187,7 @@ export const HoverSidebar: React.FC = () => {
         </div>
 
         <div className="space-y-3 pt-3 border-t border-slate-800">
-          <div className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl space-y-1.5 text-xs font-mono">
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span>Roadmap Progress</span>
-              <span className="text-emerald-400 font-bold">65%</span>
-            </div>
-            <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full w-[65%]" />
-            </div>
-          </div>
+
 
           <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white/5 font-mono">
             <Link href="/settings" className="flex items-center gap-3 overflow-hidden" onClick={() => setIsMobileOpen(false)}>
@@ -199,7 +195,7 @@ export const HoverSidebar: React.FC = () => {
                 H
               </div>
               <div className="truncate">
-                <div className="text-xs font-bold text-white truncate">example</div>
+                <div className="text-xs font-bold text-white truncate">Mentee</div>
                 <div className="text-[10px] text-slate-400 truncate">Profile</div>
               </div>
             </Link>
@@ -307,13 +303,7 @@ export const HoverSidebar: React.FC = () => {
                 exit={{ opacity: 0, y: 10 }}
                 className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl space-y-1.5 text-xs font-mono"
               >
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span>Roadmap Progress</span>
-                  <span className="text-emerald-400 font-bold">65%</span>
-                </div>
-                <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full w-[65%]" />
-                </div>
+
               </motion.div>
             )}
           </AnimatePresence>
@@ -323,7 +313,7 @@ export const HoverSidebar: React.FC = () => {
             className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer overflow-hidden"
           >
             <div className="w-9 h-9 rounded-full bg-purple-900 border border-purple-700 text-purple-200 flex items-center justify-center shrink-0 font-mono font-bold text-xs">
-              H
+              M
             </div>
 
             <AnimatePresence>
@@ -336,8 +326,8 @@ export const HoverSidebar: React.FC = () => {
                   className="whitespace-nowrap overflow-hidden pr-2 flex items-center justify-between w-full"
                 >
                   <div>
-                    <div className="text-xs font-bold text-white truncate">example</div>
-                    <div className="text-[10px] font-mono text-slate-400 truncate">Student Profile</div>
+                    <div className="text-xs font-bold text-white truncate">Mentor</div>
+                    <div className="text-[10px] font-mono text-slate-400 truncate">Mentor Profile</div>
                   </div>
                   <button
                     onClick={(e) => {

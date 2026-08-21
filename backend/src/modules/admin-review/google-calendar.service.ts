@@ -14,14 +14,14 @@ export class GoogleCalendarService {
    * If credentials are not present in .env, falls back to generating a mock Google Meet link.
    */
   static async createMeetLink(details: MeetingDetails): Promise<string> {
-    const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
-    const refreshToken = process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
+    const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_CALENDAR_REFRESH_TOKEN || process.env.GMAIL_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN;
 
     const hasCredentials = Boolean(clientId && clientSecret && refreshToken);
 
     if (!hasCredentials) {
-      console.log('ℹ️ Google Calendar credentials not found in env. Falling back to Mock Google Meet link generation.');
+      console.log('ℹ️ Google Calendar credentials not found in env. Falling back to Mock Jitsi Meet link generation.');
       return this.generateMockMeetLink();
     }
 
@@ -110,6 +110,8 @@ export class GoogleCalendarService {
     const part1 = Array.from({ length: 3 }, () => letters[Math.floor(Math.random() * letters.length)]).join('');
     const part2 = Array.from({ length: 4 }, () => letters[Math.floor(Math.random() * letters.length)]).join('');
     const part3 = Array.from({ length: 3 }, () => letters[Math.floor(Math.random() * letters.length)]).join('');
-    return `https://meet.google.com/${part1}-${part2}-${part3}`;
+    // Returns a fully functional, free Jitsi Meet room link instead of a non-existent Google Meet link.
+    // This allows the user to immediately join the call and start the meeting without any error.
+    return `https://meet.jit.si/SeekhAI-MentorCall-${part1}-${part2}-${part3}`;
   }
 }

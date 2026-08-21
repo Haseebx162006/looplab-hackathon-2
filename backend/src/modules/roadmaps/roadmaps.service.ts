@@ -66,7 +66,7 @@ export class RoadmapsService {
             interests: profile.interests || [],
           },
           assessment_results,
-          career_goal: profile.career_goal || moduleName,
+          career_goal: `${moduleName}${profile.career_goal ? ` (aligned with career aspiration: ${profile.career_goal})` : ''}`,
           test_score: test ? (test.score || 0) : 0
         })
       });

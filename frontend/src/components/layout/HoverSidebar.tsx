@@ -22,7 +22,9 @@ import {
   Mail,
   GraduationCap,
   FileText,
-  Brain
+  Brain,
+  Video,
+  CheckSquare
 } from "lucide-react";
 import { useCompany } from "@/context/CompanyContext";
 import { useGetMeQuery } from "@/store/api/authApi";
@@ -111,6 +113,18 @@ export const HoverSidebar: React.FC = () => {
         label: "User Roster",
         href: "/admin/users",
         icon: Users,
+      },
+      {
+        id: "admin-reviews",
+        label: "Task Reviews",
+        href: "/admin/reviews",
+        icon: CheckSquare,
+      },
+      {
+        id: "admin-meetings",
+        label: "Call Requests",
+        href: "/admin/meetings",
+        icon: Video,
       },
       {
         id: "knowledge-base",

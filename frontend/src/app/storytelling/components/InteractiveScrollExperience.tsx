@@ -10,6 +10,7 @@ import { BentoGridSection } from "@/app/bento/components/BentoGridSection";
 import { StatsSection } from "@/app/stats/components/StatsSection";
 import { Footer } from "@/app/components/Footer";
 import StaggeredMenu from "@/app/hero/components/StaggeredMenu";
+import { VideoScrollReveal } from "@/app/video-reveal/components/VideoScrollReveal";
 
 import { useCompany } from "@/context/CompanyContext";
 import { useRouter } from "next/navigation";
@@ -223,6 +224,9 @@ export const InteractiveScrollExperience: React.FC = () => {
 
       {/* How It Works: Pinned Horizontal Scroll */}
       <HorizontalScrollSection />
+
+      {/* Cinematic Video Reveal on Scroll */}
+      <VideoScrollReveal />
 
       {/* Bento Grid Section */}
       <BentoGridSection />

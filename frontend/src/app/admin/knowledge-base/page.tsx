@@ -55,7 +55,7 @@ export default function KnowledgeBasePage() {
   const mentorId = userProfile?.user?.id || "default_mentor";
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<"ingest" | "playground" | "manager">("ingest");
+  const [activeTab, setActiveTab] = useState<"ingest" | "manager">("ingest");
 
   // Ingestion Tab States
   const [fileBase64, setFileBase64] = useState<string>("");
@@ -310,7 +310,7 @@ export default function KnowledgeBasePage() {
         </div>
 
         {/* Tab Controls Bar */}
-        <div className="grid grid-cols-3 gap-2 mb-8 bg-slate-200/50 p-1.5 rounded-2xl border border-purple-100 font-mono text-xs font-bold text-center max-w-lg">
+        <div className="grid grid-cols-2 gap-2 mb-8 bg-slate-200/50 p-1.5 rounded-2xl border border-purple-100 font-mono text-xs font-bold text-center max-w-md">
           <button
             id="tab-ingest"
             onClick={() => setActiveTab("ingest")}
@@ -322,19 +322,6 @@ export default function KnowledgeBasePage() {
           >
             <Upload className="w-3.5 h-3.5" />
             Upload PDF
-          </button>
-
-          <button
-            id="tab-playground"
-            onClick={() => setActiveTab("playground")}
-            className={`px-3 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === "playground"
-                ? "bg-[#1E192B] text-white shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            Playground
           </button>
 
           <button

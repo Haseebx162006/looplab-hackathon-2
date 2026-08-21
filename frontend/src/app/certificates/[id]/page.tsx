@@ -30,10 +30,11 @@ export default function CertificatePage() {
   });
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
+    if (!token) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [router]);
 
   // Blast confetti on loading success
   useEffect(() => {

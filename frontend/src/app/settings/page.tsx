@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   BookOpen,
@@ -16,11 +16,16 @@ import {
   ExternalLink,
   Save,
   Plus,
+  ArrowLeft,
+  Camera,
+  Heart,
+  TrendingUp,
+  ChevronRight
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { HoverSidebar } from "@/components/layout/HoverSidebar";
 import { useCompany } from "@/context/CompanyContext";
-import { useGetMyProfileQuery, useSaveProfileMutation, useUploadCvMutation } from "@/store/api/learningApi";
+import { useGetMyProfileQuery, useSaveProfileMutation, useUploadAvatarMutation } from "@/store/api/learningApi";
 import { useGetMeQuery } from "@/store/api/authApi";
 
 const EXPERIENCE_OPTIONS = [
@@ -41,7 +46,7 @@ const EDUCATION_OPTIONS = [
   "Other",
 ];
 
-// Helper to convert File object to Base64 data URL
+// Helper to convert File object to Base64
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -56,7 +61,7 @@ export default function SettingsPage() {
   const { isAuthenticated } = useCompany();
   const { data: profileData, isLoading: isProfileLoading } = useGetMyProfileQuery();
   const [saveProfile, { isLoading: isSaving }] = useSaveProfileMutation();
-  const [uploadCv] = useUploadCvMutation();
+  const [uploadAvatar, { isLoading: isUploadingAvatar }] = useUploadAvatarMutation();
   const { data: meData } = useGetMeQuery(undefined, { skip: !isAuthenticated });
 
   // Form state
@@ -67,12 +72,9 @@ export default function SettingsPage() {
   const [skills, setSkills] = useState<string[]>([]);
   const [interestsInput, setInterestsInput] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
 
-  // CV state
-  const [cvUrl, setCvUrl] = useState<string | null>(null);
-  const [isUploadingCv, setIsUploadingCv] = useState(false);
-  const [cvFileName, setCvFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Populate form from fetched profile
   useEffect(() => {
@@ -83,19 +85,16 @@ export default function SettingsPage() {
       setCareerGoal(p.career_goal || "");
       setSkills(p.skills || []);
       setInterests(p.interests || []);
-      if (p.cv_url) {
-        setCvUrl(p.cv_url);
-        const parts = p.cv_url.split("/");
-        setCvFileName(decodeURIComponent(parts[parts.length - 1]));
-      }
+      setAvatarUrl(p.avatar_url || "");
     }
   }, [profileData]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
+    if (!token) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [router]);
 
   const addTag = (
     value: string,
@@ -114,27 +113,27 @@ export default function SettingsPage() {
     setList(list.filter((t) => t !== tag));
   };
 
-  const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("CV file must be smaller than 10MB.");
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (PNG, JPG, or WEBP).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Profile picture must be smaller than 5MB.");
       return;
     }
 
-    setIsUploadingCv(true);
     try {
       const base64Data = await readFileAsBase64(file);
-      const res = await uploadCv({ file: base64Data, fileName: file.name }).unwrap();
-      setCvUrl(res.cv_url);
-      setCvFileName(file.name);
-      toast.success("CV uploaded successfully!");
+      const res = await uploadAvatar({ file: base64Data }).unwrap();
+      setAvatarUrl(res.avatar_url);
+      toast.success("Profile picture uploaded successfully!");
     } catch (err: any) {
-      const msg = err?.data?.error || err?.message || "CV upload failed.";
+      const msg = err?.data?.error || err?.message || "Profile picture upload failed.";
       toast.error(msg);
-    } finally {
-      setIsUploadingCv(false);
     }
   };
 
@@ -146,7 +145,7 @@ export default function SettingsPage() {
         career_goal: careerGoal,
         skills,
         interests,
-        cv_url: cvUrl || undefined,
+        avatar_url: avatarUrl || undefined,
       }).unwrap();
       toast.success("Profile saved successfully!");
     } catch (err: any) {
@@ -165,345 +164,329 @@ export default function SettingsPage() {
     );
   }
 
+  const initials = meData?.user?.name?.[0]?.toUpperCase() || "S";
+
   return (
     <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
       <HoverSidebar />
       <Toaster position="top-right" />
 
-      <main className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-[10px] font-extrabold font-mono rounded-full border border-purple-200 uppercase">
-            ACCOUNT
-          </span>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-mono text-slate-900 mt-3">
-            Profile Settings
-          </h1>
-          <p className="text-xs text-slate-500 font-mono mt-1">
-            Update your learning profile and upload your CV.
-          </p>
+      {/* Main container with lenis override and bottom padding */}
+      <main data-lenis-prevent className="flex-1 ml-0 md:ml-20 p-6 md:p-10 pt-20 md:pt-10 w-full overflow-x-hidden pb-32">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-[#D8CBEB]/30 mb-8">
+          <div>
+            <span className="px-2.5 py-1 bg-[#F5F2FA] text-[#7C3AED] text-[10px] font-extrabold font-mono rounded-full border border-[#D8CBEB] uppercase tracking-wider">
+              System Settings
+            </span>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-mono text-slate-900 mt-3">
+              Profile Configuration
+            </h1>
+            <p className="text-xs text-slate-500 font-mono mt-1">
+              Configure your career objectives, skills profile, and upload your profile picture.
+            </p>
+          </div>
+
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-1.5 px-4 py-2 border border-[#D8CBEB] hover:bg-purple-50 text-slate-700 rounded-xl font-mono text-xs font-semibold transition-colors cursor-pointer shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-500" /> Return to Dashboard
+          </button>
         </div>
 
-        <div className="space-y-6">
-          {/* Account Info Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white border border-purple-100 rounded-3xl p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-                <User className="w-4 h-4 text-purple-600" />
-              </div>
-              <h2 className="text-sm font-bold font-mono text-slate-800">Account Info</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold font-mono text-slate-500 uppercase mb-1">Name</label>
-                <p className="text-sm font-mono text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                  {meData?.user?.name || "—"}
-                </p>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold font-mono text-slate-500 uppercase mb-1">Email</label>
-                <p className="text-sm font-mono text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                  {meData?.user?.email || "—"}
-                </p>
-              </div>
-            </div>
-          </motion.div>
+        {/* Settings grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Left Column: Avatar upload, profile card and CV redirect */}
+          <div className="space-y-6">
+            
+            {/* Avatar management card */}
+            <div className="bg-white border border-[#D8CBEB]/30 rounded-3xl p-6 shadow-xs font-mono text-center flex flex-col items-center">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-4 self-start">
+                Avatar Photo
+              </span>
 
-          {/* Education & Experience */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="bg-white border border-purple-100 rounded-3xl p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-                <BookOpen className="w-4 h-4 text-purple-600" />
-              </div>
-              <h2 className="text-sm font-bold font-mono text-slate-800">Education & Experience</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold font-mono text-slate-500 uppercase mb-1">
-                  Education Level
-                </label>
-                <select
-                  value={education}
-                  onChange={(e) => setEducation(e.target.value)}
-                  className="w-full text-sm font-mono text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 cursor-pointer"
-                >
-                  <option value="">Select education...</option>
-                  {EDUCATION_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold font-mono text-slate-500 uppercase mb-1">
-                  Experience Level
-                </label>
-                <select
-                  value={experience}
-                  onChange={(e) => setExperience(e.target.value)}
-                  className="w-full text-sm font-mono text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 cursor-pointer"
-                >
-                  <option value="">Select experience...</option>
-                  {EXPERIENCE_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Career Goal */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white border border-purple-100 rounded-3xl p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Target className="w-4 h-4 text-purple-600" />
-              </div>
-              <h2 className="text-sm font-bold font-mono text-slate-800">Career Goal</h2>
-            </div>
-            <textarea
-              value={careerGoal}
-              onChange={(e) => setCareerGoal(e.target.value)}
-              placeholder="e.g. Become a full-stack developer and work at a product startup..."
-              rows={3}
-              className="w-full text-sm font-mono text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 resize-none"
-            />
-          </motion.div>
-
-          {/* Skills */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-white border border-purple-100 rounded-3xl p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Briefcase className="w-4 h-4 text-purple-600" />
-              </div>
-              <h2 className="text-sm font-bold font-mono text-slate-800">Skills</h2>
-            </div>
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={skillsInput}
-                onChange={(e) => setSkillsInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === ",") {
-                    e.preventDefault();
-                    addTag(skillsInput, skills, setSkills, setSkillsInput);
-                  }
-                }}
-                placeholder="Type a skill and press Enter..."
-                className="flex-1 text-sm font-mono text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
-              />
-              <button
-                onClick={() => addTag(skillsInput, skills, setSkills, setSkillsInput)}
-                className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            {skills.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-200 text-purple-700 text-xs font-mono font-bold rounded-full"
-                  >
-                    {skill}
-                    <button
-                      onClick={() => removeTag(skill, skills, setSkills)}
-                      className="hover:text-red-500 transition-colors cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          {/* Interests */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white border border-purple-100 rounded-3xl p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Target className="w-4 h-4 text-purple-600" />
-              </div>
-              <h2 className="text-sm font-bold font-mono text-slate-800">Interests</h2>
-            </div>
-            <div className="flex gap-2 mb-3">
-              <input
-                type="text"
-                value={interestsInput}
-                onChange={(e) => setInterestsInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === ",") {
-                    e.preventDefault();
-                    addTag(interestsInput, interests, setInterests, setInterestsInput);
-                  }
-                }}
-                placeholder="Type an interest and press Enter..."
-                className="flex-1 text-sm font-mono text-slate-800 bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
-              />
-              <button
-                onClick={() => addTag(interestsInput, interests, setInterests, setInterestsInput)}
-                className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-            {interests.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {interests.map((interest) => (
-                  <span
-                    key={interest}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-mono font-bold rounded-full"
-                  >
-                    {interest}
-                    <button
-                      onClick={() => removeTag(interest, interests, setInterests)}
-                      className="hover:text-red-500 transition-colors cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          {/* CV Upload */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="bg-white border border-purple-100 rounded-3xl p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
-                <FileText className="w-4 h-4 text-purple-600" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold font-mono text-slate-800">Curriculum Vitae (CV)</h2>
-                <p className="text-[10px] font-mono text-slate-400">Upload your CV in PDF, DOC, or DOCX format (max 10MB)</p>
-              </div>
-            </div>
-
-            {cvUrl ? (
-              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold font-mono text-slate-800 truncate">
-                      {cvFileName || "CV Uploaded"}
-                    </p>
-                    <p className="text-[10px] font-mono text-emerald-600">Uploaded to Cloudinary</p>
+              {/* Avatar circle with image, fallback initials or loading state */}
+              <div className="relative group w-28 h-28 mb-4">
+                {isUploadingAvatar ? (
+                  <div className="w-full h-full rounded-full border-2 border-dashed border-[#7C3AED] bg-purple-50 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-[#7C3AED] animate-spin" />
                   </div>
+                ) : avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-full h-full rounded-full object-cover border-2 border-[#7C3AED] shadow-sm"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#7C3AED] to-indigo-650 text-white text-3xl font-black flex items-center justify-center shadow-sm">
+                    {initials}
+                  </div>
+                )}
+
+                {/* Edit overlay */}
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 p-2 bg-[#7C3AED] hover:bg-purple-700 text-white rounded-full border-2 border-white cursor-pointer shadow-md transition-all scale-95 hover:scale-100"
+                  title="Upload profile picture"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              </div>
+
+              <h3 className="text-sm font-bold text-[#1E192B]">
+                {meData?.user?.name || "Username"}
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {meData?.user?.email}
+              </p>
+
+              <input
+                type="file"
+                ref={avatarInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="mt-4 px-4 py-2 border border-[#D8CBEB] hover:bg-purple-50 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Change Picture
+              </button>
+            </div>
+
+            {/* CV Analyzer shortcut card */}
+            <div className="bg-[#1E192B] text-white border border-white/5 rounded-3xl p-6 shadow-md font-mono relative overflow-hidden">
+              <div className="absolute right-0 bottom-0 opacity-[0.03] pointer-events-none translate-x-4 translate-y-4">
+                <FileText className="w-48 h-48" />
+              </div>
+              
+              <span className="text-[9px] font-bold text-[#D8CBEB] uppercase tracking-wider block mb-2">
+                CV Intelligence
+              </span>
+              <h4 className="text-xs font-bold text-white leading-relaxed">
+                Resume parsing & ATS grade sheet is now managed directly in the CV Analysis suite.
+              </h4>
+              <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                Upload your resume, parse skills, identify keywords, and grade structural compliance instantly.
+              </p>
+              
+              <button
+                onClick={() => router.push("/cv-report")}
+                className="mt-5 w-full flex items-center justify-center gap-1.5 py-3 bg-[#7C3AED] hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Go to CV Analyzer <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+          </div>
+
+          {/* Right 2 Columns: Profile form fields */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Core Info card (Education + Experience dropdowns) */}
+            <div className="bg-white border border-[#D8CBEB]/30 rounded-3xl p-6 shadow-xs font-mono space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <BookOpen className="w-4 h-4 text-purple-600" />
+                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Education & Experience</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Education Level
+                  </label>
+                  <select
+                    value={education}
+                    onChange={(e) => setEducation(e.target.value)}
+                    className="w-full text-xs font-mono text-slate-800 bg-white border border-[#D8CBEB]/20 rounded-xl px-3.5 py-2.5 focus:ring-1 focus:ring-[#7C3AED] focus:border-transparent outline-hidden cursor-pointer"
+                  >
+                    <option value="">Select education...</option>
+                    {EDUCATION_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <a
-                    href={cvUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 text-slate-500 hover:text-purple-600 transition-colors"
-                    title="View CV"
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Experience Level
+                  </label>
+                  <select
+                    value={experience}
+                    onChange={(e) => setExperience(e.target.value)}
+                    className="w-full text-xs font-mono text-slate-800 bg-white border border-[#D8CBEB]/20 rounded-xl px-3.5 py-2.5 focus:ring-1 focus:ring-[#7C3AED] focus:border-transparent outline-hidden cursor-pointer"
                   >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
+                    <option value="">Select experience...</option>
+                    {EXPERIENCE_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Career Goals textarea */}
+            <div className="bg-white border border-[#D8CBEB]/30 rounded-3xl p-6 shadow-xs font-mono space-y-4">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <Target className="w-4 h-4 text-[#7C3AED]" />
+                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Career Objectives</h2>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Describe your target role & professional ambitions
+                </label>
+                <textarea
+                  value={careerGoal}
+                  onChange={(e) => setCareerGoal(e.target.value)}
+                  placeholder="e.g. Become a full-stack engineer, build scalable cloud architectures, or master machine learning systems..."
+                  rows={4}
+                  className="w-full text-xs font-mono text-slate-800 bg-white border border-[#D8CBEB]/20 rounded-xl px-3.5 py-2.5 focus:ring-1 focus:ring-[#7C3AED] focus:border-transparent outline-hidden resize-none leading-relaxed placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Skills tag input */}
+            <div className="bg-white border border-[#D8CBEB]/30 rounded-3xl p-6 shadow-xs font-mono space-y-4">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <Briefcase className="w-4 h-4 text-emerald-600" />
+                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Skills Profile</h2>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Skills Registered
+                </label>
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={skillsInput}
+                    onChange={(e) => setSkillsInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        addTag(skillsInput, skills, setSkills, setSkillsInput);
+                      }
+                    }}
+                    placeholder="Type a skill (e.g. React, Node) and press Enter..."
+                    className="flex-1 text-xs font-mono text-slate-800 bg-white border border-[#D8CBEB]/20 rounded-xl px-3.5 py-2.5 focus:ring-1 focus:ring-[#7C3AED] focus:border-transparent outline-hidden"
+                  />
                   <button
-                    onClick={() => { setCvUrl(null); setCvFileName(null); }}
-                    className="p-2 text-slate-500 hover:text-red-500 transition-colors cursor-pointer"
-                    title="Remove CV"
+                    onClick={() => addTag(skillsInput, skills, setSkills, setSkillsInput)}
+                    className="px-4 py-2 bg-purple-55 hover:bg-purple-100 text-[#7C3AED] rounded-xl border border-purple-100 flex items-center justify-center cursor-pointer transition-colors"
                   >
-                    <X className="w-4 h-4" />
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
+
+                {skills.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-purple-50 border border-purple-200/50 text-[#7C3AED] text-xs font-mono font-bold rounded-xl"
+                      >
+                        {skill}
+                        <button
+                          onClick={() => removeTag(skill, skills, setSkills)}
+                          className="hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400">No skills added yet.</p>
+                )}
               </div>
-            ) : (
+            </div>
+
+            {/* Interests tag input */}
+            <div className="bg-white border border-[#D8CBEB]/30 rounded-3xl p-6 shadow-xs font-mono space-y-4">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <Heart className="w-4 h-4 text-indigo-500" />
+                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Interests</h2>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  Learning Interests
+                </label>
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={interestsInput}
+                    onChange={(e) => setInterestsInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        addTag(interestsInput, interests, setInterests, setInterestsInput);
+                      }
+                    }}
+                    placeholder="Type an interest (e.g. UX Design, Web3) and press Enter..."
+                    className="flex-1 text-xs font-mono text-slate-800 bg-white border border-[#D8CBEB]/20 rounded-xl px-3.5 py-2.5 focus:ring-1 focus:ring-[#7C3AED] focus:border-transparent outline-hidden"
+                  />
+                  <button
+                    onClick={() => addTag(interestsInput, interests, setInterests, setInterestsInput)}
+                    className="px-4 py-2 bg-purple-55 hover:bg-purple-100 text-[#7C3AED] rounded-xl border border-purple-100 flex items-center justify-center cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {interests.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {interests.map((interest) => (
+                      <span
+                        key={interest}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200/50 text-indigo-705 text-xs font-mono font-bold rounded-xl"
+                      >
+                        {interest}
+                        <button
+                          onClick={() => removeTag(interest, interests, setInterests)}
+                          className="hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400">No interests added yet.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="space-y-4 pt-4">
               <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingCv}
-                className="w-full border-2 border-dashed border-purple-200 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 hover:border-purple-400 hover:bg-purple-50/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-2 py-4 bg-[#7C3AED] hover:bg-purple-700 text-white rounded-2xl font-mono text-sm font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isUploadingCv ? (
+                {isSaving ? (
                   <>
-                    <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
-                    <p className="text-sm font-mono text-purple-600 font-bold">Uploading to Cloudinary...</p>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving changes...
                   </>
                 ) : (
                   <>
-                    <Upload className="w-8 h-8 text-purple-400" />
-                    <div className="text-center">
-                      <p className="text-sm font-bold font-mono text-slate-700">Click to upload your CV</p>
-                      <p className="text-[10px] font-mono text-slate-400 mt-1">PDF, DOC, DOCX — max 10MB</p>
-                    </div>
+                    <Save className="w-4 h-4" /> Save Configuration Settings
                   </>
                 )}
               </button>
-            )}
+            </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="hidden"
-              onChange={handleCvUpload}
-            />
-          </motion.div>
+          </div>
 
-          {/* Save Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-3 pb-8"
-          >
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-full flex items-center justify-center gap-2 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-mono text-sm font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving profile...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save Profile
-                </>
-              )}
-            </button>
-
-            {/* Analyze CV shortcut */}
-            <button
-              onClick={() => router.push("/cv-report")}
-              className="w-full flex items-center justify-center gap-2 py-4 bg-white hover:bg-purple-50 text-purple-700 border-2 border-purple-200 hover:border-purple-400 rounded-2xl font-mono text-sm font-bold transition-all cursor-pointer"
-            >
-              <FileText className="w-4 h-4" />
-              Analyze My CV with AI →
-            </button>
-          </motion.div>
         </div>
+
       </main>
     </div>
   );

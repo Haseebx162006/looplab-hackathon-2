@@ -416,6 +416,12 @@ export const sqlMigrations = [
       ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS document_id UUID;
     `,
   },
+  {
+    name: '016_add_avatar_url_to_profiles',
+    sql: `
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool) {

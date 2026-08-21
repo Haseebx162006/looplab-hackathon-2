@@ -17,7 +17,9 @@ export const authApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
     prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as any).auth.token;
+      const token =
+        (getState() as any).auth.token ||
+        (typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null);
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }

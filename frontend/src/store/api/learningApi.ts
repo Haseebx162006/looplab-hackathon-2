@@ -15,6 +15,7 @@ export interface Profile {
   career_goal: string;
   experience: string;
   profile_complete: boolean;
+  avatar_url?: string;
 }
 
 export interface TestSession {
@@ -153,7 +154,9 @@ export const learningApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
     prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as any).auth.token;
+      const token =
+        (getState() as any).auth.token ||
+        (typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null);
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }
@@ -302,6 +305,14 @@ export const learningApi = createApi({
         body,
       }),
     }),
+    uploadAvatar: builder.mutation<{ message: string; avatar_url: string }, { file: string }>({
+      query: (body) => ({
+        url: "/cv/upload-avatar",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Profile"],
+    }),
     resumeRoadmap: builder.mutation<any, string>({
       query: (id) => ({
         url: `/roadmaps/${id}/resume`,
@@ -413,6 +424,7 @@ export const {
   useBookMentorCallMutation,
   useAnalyzeCvMutation,
   useUploadCvMutation,
+  useUploadAvatarMutation,
   useResumeRoadmapMutation,
   useCreateBookingRequestMutation,
   useGetUserBookingRequestsQuery,

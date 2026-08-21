@@ -6,5 +6,6 @@ const router = Router();
 
 router.post('/analyze', requireAuth, CvAnalyzeController.analyze);
 router.post('/upload', requireAuth, CvAnalyzeController.upload);
+router.post('/upload-avatar', requireAuth, CvAnalyzeController.uploadAvatar);
 
 export default router;

@@ -131,10 +131,11 @@ export default function OnboardingPage() {
   });
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
+    if (!token) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [router]);
 
   // Dynamically update skills when roadmap changes
   useEffect(() => {

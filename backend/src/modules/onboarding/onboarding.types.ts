@@ -5,4 +5,5 @@ export interface ProfileInput {
   career_goal: string;
   experience: string;
   cv_url?: string;
+  avatar_url?: string;
 }

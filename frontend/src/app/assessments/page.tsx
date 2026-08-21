@@ -75,13 +75,14 @@ function AssessmentContent() {
   const [pipelineStep, setPipelineStep] = useState<"submitting" | "analyzing" | "mapping" | "idle">("idle");
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
+    if (!token) {
       router.push("/login");
     } else if (!hasCompletedOnboarding && !testId) {
       // Allow taking onboarding-generated test even if onboarding complete state is false in store
       router.push("/onboarding");
     }
-  }, [isAuthenticated, hasCompletedOnboarding, testId, router]);
+  }, [hasCompletedOnboarding, testId, router]);
 
   const handleSelectOption = (questionId: string, option: string) => {
     setSelectedAnswers((prev) => ({

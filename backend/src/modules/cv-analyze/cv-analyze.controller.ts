@@ -138,4 +138,47 @@ export class CvAnalyzeController {
       next(error);
     }
   }
+
+  static async uploadAvatar(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const { file } = req.body;
+      if (!file) {
+        return res.status(400).json({ error: 'File data is required.' });
+      }
+
+      let avatarUrl = '';
+      if (config.cloudinary.cloudName && config.cloudinary.apiKey && config.cloudinary.apiSecret) {
+        const uploadResult = await cloudinary.uploader.upload(file, {
+          resource_type: 'image',
+          folder: 'seekh_avatars',
+          public_id: `avatar_${userId}`,
+          overwrite: true,
+        });
+        avatarUrl = uploadResult.secure_url;
+      } else {
+        console.log('⚠️ Cloudinary backend keys not found. Mocking upload url...');
+        avatarUrl = `https://res.cloudinary.com/demo/image/upload/sample.jpg`;
+      }
+
+      await pool.query(
+        `INSERT INTO profiles (user_id, avatar_url, profile_complete)
+         VALUES ($1, $2, false)
+         ON CONFLICT (user_id)
+         DO UPDATE SET avatar_url = EXCLUDED.avatar_url`,
+        [userId, avatarUrl]
+      );
+
+      return res.status(200).json({
+        message: 'Profile picture uploaded successfully',
+        avatar_url: avatarUrl,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

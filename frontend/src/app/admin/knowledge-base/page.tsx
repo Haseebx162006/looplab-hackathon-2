@@ -39,13 +39,14 @@ export default function KnowledgeBasePage() {
 
   // Redirect if not admin/mentor
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
+    if (!token) {
       router.push("/login");
     } else if (userProfile && userProfile.user?.role !== "admin") {
       toast.error("Access Denied: Mentors/Admins only.");
       router.push("/dashboard");
     }
-  }, [isAuthenticated, userProfile, router]);
+  }, [userProfile, router]);
 
   const mentorId = userProfile?.user?.id || "default_mentor";
 

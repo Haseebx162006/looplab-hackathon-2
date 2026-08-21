@@ -48,13 +48,14 @@ export default function AdminDashboardPage() {
 
   // Protect route
   useEffect(() => {
-    if (!isAuthenticated) {
+    const token = typeof window !== "undefined" ? localStorage.getItem("seekh_auth_token") : null;
+    if (!token) {
       router.push("/login");
     } else if (userProfile && userProfile.user?.role !== "admin") {
       toast.error("Access Denied: Mentors/Admins only.");
       router.push("/dashboard");
     }
-  }, [isAuthenticated, userProfile, router]);
+  }, [userProfile, router]);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<"submissions" | "users" | "bookings">("submissions");

@@ -13,7 +13,9 @@ export const VideoScrollReveal: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const scrollProgress = useRef({ value: 0 });
 
+  // 1. Fetch video as Blob to ensure seek speed & zero network lag
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -30,18 +32,54 @@ export const VideoScrollReveal: React.FC = () => {
       video.addEventListener("loadedmetadata", handleLoadedMetadata);
     }
 
+    fetch("/video.mp4")
+      .then((r) => (r.ok ? r.blob() : Promise.reject()))
+      .then((blob) => {
+        video.src = URL.createObjectURL(blob);
+      })
+      .catch(() => {
+        video.src = "/video.mp4";
+      });
+
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
   }, []);
 
+  // 2. Prime video for iOS touch browsers
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const prime = () => {
+      try {
+        const p = video.play();
+        if (p && p.then) {
+          p.then(() => {
+            try {
+              video.pause();
+            } catch (e) {}
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener("touchstart", prime, { once: true, passive: true });
+    window.addEventListener("pointerdown", prime, { once: true, passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", prime);
+      window.removeEventListener("pointerdown", prime);
+    };
+  }, []);
+
+  // 3. GSAP Timeline triggers mask expansion and updates scrollProgress value
   useGSAP(
     () => {
       if (!isReady || !containerRef.current || !videoRef.current) return;
 
       const video = videoRef.current;
 
-      // GSAP Timeline for the reveal & video scrub
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: containerRef.current,
@@ -53,7 +91,7 @@ export const VideoScrollReveal: React.FC = () => {
         },
       });
 
-      // 1. Expand the clip-path circle (reveal video)
+      // Expand the clip-path circle (reveal video)
       tl.fromTo(
         video,
         {
@@ -66,35 +104,71 @@ export const VideoScrollReveal: React.FC = () => {
         }
       );
 
-      // 2. Scrub the video timeline directly using GSAP property animation
+      // Animate scrollProgress value, which is then mapped to video currentTime inside requestAnimationFrame
       tl.to(
-        video,
+        scrollProgress.current,
         {
-          currentTime: video.duration,
+          value: 1,
           duration: 2.5,
           ease: "none",
         },
-        "-=0.5" // Start scrubbing slightly before the zoom completes
+        "-=0.5"
       );
     },
     { dependencies: [isReady], scope: containerRef }
   );
 
+  // 4. Custom requestAnimationFrame loop for coalesced seek requests (avoids seeking collision)
+  useEffect(() => {
+    if (!isReady || !videoRef.current) return;
+
+    const video = videoRef.current;
+    let frameId: number;
+    let cur = 0;
+    
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isMobile = window.matchMedia("(hover: none) and (pointer: coarse)").matches || window.innerWidth <= 860;
+    const eps = isMobile ? 0.02 : 0.008;
+
+    const tick = () => {
+      if (video.seeking) {
+        frameId = requestAnimationFrame(tick);
+        return;
+      }
+
+      const target = scrollProgress.current.value;
+      cur += (target - cur) * (reduce ? 1 : 0.18); // Lerping
+      const dur = video.duration || 1;
+      const t = Math.min(0.999, Math.max(0, cur)) * dur;
+
+      if (Math.abs(video.currentTime - t) > eps) {
+        try {
+          video.currentTime = t;
+        } catch (e) {}
+      }
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [isReady]);
+
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-screen overflow-hidden flex items-center justify-center"
+      className="relative w-full h-screen overflow-hidden flex items-center justify-center bg-black"
     >
-      {/* Video with initial tiny clip-path mask */}
       <video
         ref={videoRef}
-        src="/video.mp4"
         muted
         playsInline
         preload="auto"
         className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none"
         style={{
-          clipPath: "circle(0% at 50% 50%)", // Matches start unit
+          clipPath: "circle(0% at 50% 50%)",
         }}
       />
     </div>

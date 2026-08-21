@@ -160,7 +160,7 @@ export class AdminReviewService {
   static async getAllUsers() {
     const res = await pool.query(
       `SELECT u.id, u.name, u.email, u.role, u.is_verified, u.is_blocked, u.created_at,
-              p.profile_complete, p.experience, p.career_goal
+              p.profile_complete, p.experience, p.career_goal, p.avatar_url
        FROM users u
        LEFT JOIN profiles p ON u.id = p.user_id
        ORDER BY u.created_at DESC`

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useCompany } from "@/context/CompanyContext";
 import { useGetMeQuery } from "@/store/api/authApi";
+import { useGetMyProfileQuery, useGetProgressQuery } from "@/store/api/learningApi";
 
 interface NavItem {
   id: string;
@@ -76,6 +77,21 @@ export const HoverSidebar: React.FC = () => {
   const { data: userProfile } = useGetMeQuery(undefined, {
     skip: !isAuthenticated,
   });
+  
+  const { data: myProfile } = useGetMyProfileQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  const { data: progressData } = useGetProgressQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  const activeRoadmap = progressData?.roadmaps?.[0];
+  const progressPercentage = activeRoadmap ? activeRoadmap.progress_percentage : 0;
+  const avatarUrl = myProfile?.profile?.avatar_url;
+  const userName = userProfile?.user?.name || "Student";
+  const userRole = userProfile?.user?.role || "user";
+
   const pathname = usePathname();
   const router = useRouter();
 
@@ -187,16 +203,18 @@ export const HoverSidebar: React.FC = () => {
         </div>
 
         <div className="space-y-3 pt-3 border-t border-slate-800">
-
-
           <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white/5 font-mono">
             <Link href="/settings" className="flex items-center gap-3 overflow-hidden" onClick={() => setIsMobileOpen(false)}>
-              <div className="w-9 h-9 rounded-full bg-purple-900 border border-purple-700 text-purple-200 flex items-center justify-center shrink-0 font-bold text-xs">
-                H
-              </div>
-              <div className="truncate">
-                <div className="text-xs font-bold text-white truncate">Mentee</div>
-                <div className="text-[10px] text-slate-400 truncate">Profile</div>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-9 h-9 rounded-full object-cover shrink-0 border border-purple-700/50 shadow-sm" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-purple-900 border border-purple-700 text-purple-200 flex items-center justify-center shrink-0 font-bold text-xs">
+                  {userName[0]?.toUpperCase() || "U"}
+                </div>
+              )}
+              <div className="truncate flex flex-col justify-center">
+                <div className="text-xs font-bold text-white truncate">{userName}</div>
+                <div className="text-[10px] text-slate-400 truncate capitalize">{userRole} Profile</div>
               </div>
             </Link>
             <button
@@ -303,7 +321,17 @@ export const HoverSidebar: React.FC = () => {
                 exit={{ opacity: 0, y: 10 }}
                 className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl space-y-1.5 text-xs font-mono"
               >
-
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-slate-400">Roadmap</span>
+                  <span className="text-purple-300 font-bold">{progressPercentage}%</span>
+                </div>
+                <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPercentage}%` }}
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" 
+                  />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -312,8 +340,14 @@ export const HoverSidebar: React.FC = () => {
             href="/settings"
             className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer overflow-hidden"
           >
-            <div className="w-9 h-9 rounded-full bg-purple-900 border border-purple-700 text-purple-200 flex items-center justify-center shrink-0 font-mono font-bold text-xs">
-              M
+            <div className="relative shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-9 h-9 rounded-full object-cover border border-purple-700/50 shadow-sm" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-purple-900 border border-purple-700 text-purple-200 flex items-center justify-center font-mono font-bold text-xs">
+                  {userName[0]?.toUpperCase() || "U"}
+                </div>
+              )}
             </div>
 
             <AnimatePresence>
@@ -325,9 +359,9 @@ export const HoverSidebar: React.FC = () => {
                   transition={{ duration: 0.2 }}
                   className="whitespace-nowrap overflow-hidden pr-2 flex items-center justify-between w-full"
                 >
-                  <div>
-                    <div className="text-xs font-bold text-white truncate">Mentor</div>
-                    <div className="text-[10px] font-mono text-slate-400 truncate">Mentor Profile</div>
+                  <div className="flex flex-col justify-center">
+                    <div className="text-xs font-bold text-white truncate max-w-[120px]">{userName}</div>
+                    <div className="text-[10px] font-mono text-slate-400 truncate capitalize">{userRole} Profile</div>
                   </div>
                   <button
                     onClick={(e) => {

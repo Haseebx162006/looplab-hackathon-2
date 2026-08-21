@@ -396,6 +396,10 @@ export const learningApi = createApi({
       }),
       invalidatesTags: ["RagDocuments" as any, "RagChunks" as any],
     }),
+    getAdminUserProgress: builder.query<ProgressSummary, string>({
+      query: (userId) => `/users/admin/${userId}/progress`,
+      providesTags: ["Progress"],
+    }),
   }),
 });
 
@@ -428,6 +432,7 @@ export const {
   useResumeRoadmapMutation,
   useCreateBookingRequestMutation,
   useGetUserBookingRequestsQuery,
+  useGetAdminUserProgressQuery,
   useGetAdminBookingRequestsQuery,
   useRespondToBookingRequestMutation,
   useIngestRagDocumentMutation,

@@ -1,3 +1,4 @@
+live url : looplab-hackathon-2.vercel.app
 # 🎓 SEEKH AI — Personalized Adaptive Career & Assessment Platform
 
 SEEKH AI is a next-generation, AI-driven educational platform designed to personalize career roadmaps, automate technical assessments, and empower mentors through custom knowledge retrieval (RAG) and smart agent workflows. The platform is designed as an adaptive, multi-service architecture that bridges student assessments with human-in-the-loop mentor reviews.

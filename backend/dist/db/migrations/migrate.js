@@ -345,7 +345,10 @@ export const sqlMigrations = [
 
       INSERT INTO modules (name, description) VALUES
         ('AI Engineering', 'Learn how to build AI-powered applications, retrieve knowledge using RAG, and orchestrate agent workflows.'),
-        ('Backend Development', 'Learn how to design API architectures, work with databases, and handle scale.')
+        ('Backend Development', 'Learn how to design API architectures, work with databases, and handle scale.'),
+        ('Flutter Development', 'Learn how to build cross-platform mobile, web, and desktop applications using Dart and Flutter.'),
+        ('Agentic AI', 'Explore autonomous agent frameworks, multi-agent orchestration, tool integration, and advanced LLM reasoning.'),
+        ('Software Testing', 'Master unit testing, integration testing, end-to-end testing, CI/CD pipelines, and quality assurance best practices.')
       ON CONFLICT (name) DO NOTHING;
     `,
     },
@@ -371,6 +374,32 @@ export const sqlMigrations = [
         name: '012_add_links_to_task_submissions',
         sql: `
       ALTER TABLE task_submissions ADD COLUMN IF NOT EXISTS links TEXT[] DEFAULT '{}';
+    `,
+    },
+    {
+        name: '013_create_mentor_call_requests',
+        sql: `
+      CREATE TABLE IF NOT EXISTS mentor_call_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        meet_link TEXT,
+        scheduled_at TIMESTAMP WITH TIME ZONE,
+        comment TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    },
+    {
+        name: '014_add_more_modules',
+        sql: `
+      INSERT INTO modules (name, description) VALUES
+        ('Flutter Development', 'Learn how to build cross-platform mobile, web, and desktop applications using Dart and Flutter.'),
+        ('Agentic AI', 'Explore autonomous agent frameworks, multi-agent orchestration, tool integration, and advanced LLM reasoning.'),
+        ('Software Testing', 'Master unit testing, integration testing, end-to-end testing, CI/CD pipelines, and quality assurance best practices.')
+      ON CONFLICT (name) DO NOTHING;
     `,
     },
 ];

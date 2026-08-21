@@ -54,4 +54,21 @@ export class RoadmapsController {
             next(error);
         }
     }
+    static async resumeRoadmap(req, res, next) {
+        try {
+            const userId = req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+            const { id } = req.params;
+            const result = await RoadmapsService.resumeRoadmap(userId, id);
+            res.status(200).json({
+                message: 'Roadmap resumed successfully',
+                roadmap: result
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }

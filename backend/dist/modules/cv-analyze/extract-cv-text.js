@@ -4,7 +4,8 @@ const pdfParse = require('pdf-parse');
 function bufferFromUploadPayload(file) {
     const match = file.match(/^data:.*?;base64,(.+)$/s);
     const b64 = match ? match[1] : file;
-    return Buffer.from(b64.replace(/\s/g, ''), 'base64');
+    const restoredB64 = b64.replace(/ /g, '+').replace(/\s/g, '');
+    return Buffer.from(restoredB64, 'base64');
 }
 export async function extractCvText(file) {
     const buffer = bufferFromUploadPayload(file);

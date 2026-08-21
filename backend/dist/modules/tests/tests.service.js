@@ -9,11 +9,8 @@ export class TestsService {
         if (!profile || !profile.profile_complete) {
             throw { status: 400, message: 'Profile is incomplete. Please complete your onboarding profile first.' };
         }
-        // 2. Verify if user has an active roadmap in progress
-        const activeRoadmapRes = await pool.query("SELECT id FROM roadmaps WHERE user_id = $1 AND status = 'in_progress'", [userId]);
-        if (activeRoadmapRes.rows.length > 0) {
-            throw { status: 400, message: 'You have an active learning path in progress. Please complete or abandon it before starting a new one.' };
-        }
+        // 2. Auto-abandon any existing active roadmaps
+        await pool.query("UPDATE roadmaps SET status = 'abandoned' WHERE user_id = $1 AND status = 'in_progress'", [userId]);
         // 3. Fetch module name
         const moduleRes = await pool.query('SELECT name FROM modules WHERE id = $1', [module_id]);
         const moduleItem = moduleRes.rows[0];

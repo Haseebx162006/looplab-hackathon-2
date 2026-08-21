@@ -347,7 +347,10 @@ export const sqlMigrations = [
 
       INSERT INTO modules (name, description) VALUES
         ('AI Engineering', 'Learn how to build AI-powered applications, retrieve knowledge using RAG, and orchestrate agent workflows.'),
-        ('Backend Development', 'Learn how to design API architectures, work with databases, and handle scale.')
+        ('Backend Development', 'Learn how to design API architectures, work with databases, and handle scale.'),
+        ('Flutter Development', 'Learn how to build cross-platform mobile, web, and desktop applications using Dart and Flutter.'),
+        ('Agentic AI', 'Explore autonomous agent frameworks, multi-agent orchestration, tool integration, and advanced LLM reasoning.'),
+        ('Software Testing', 'Master unit testing, integration testing, end-to-end testing, CI/CD pipelines, and quality assurance best practices.')
       ON CONFLICT (name) DO NOTHING;
     `,
   },
@@ -389,6 +392,16 @@ export const sqlMigrations = [
         comment TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+    `,
+  },
+  {
+    name: '014_add_more_modules',
+    sql: `
+      INSERT INTO modules (name, description) VALUES
+        ('Flutter Development', 'Learn how to build cross-platform mobile, web, and desktop applications using Dart and Flutter.'),
+        ('Agentic AI', 'Explore autonomous agent frameworks, multi-agent orchestration, tool integration, and advanced LLM reasoning.'),
+        ('Software Testing', 'Master unit testing, integration testing, end-to-end testing, CI/CD pipelines, and quality assurance best practices.')
+      ON CONFLICT (name) DO NOTHING;
     `,
   },
 ];

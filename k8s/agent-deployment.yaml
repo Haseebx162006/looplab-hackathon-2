@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-service
+  labels:
+    app: agent-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-service
+  template:
+    metadata:
+      labels:
+        app: agent-service
+    spec:
+      containers:
+        - name: agent-service
+          image: skillforge-agent-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PORT
+              value: "8000"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: NODE_ENV
+              value: "production"
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: groq-api-key
+            - name: RAG_SERVICE_URL
+              value: "http://rag-service:5002"
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-service
+  labels:
+    app: agent-service
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: agent-service
+  type: ClusterIP

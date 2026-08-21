@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-service
+  labels:
+    app: rag-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rag-service
+  template:
+    metadata:
+      labels:
+        app: rag-service
+    spec:
+      containers:
+        - name: rag-service
+          image: skillforge-rag-service:latest
+          imagePullPolicy: Never # Expecting locally built Docker images
+          ports:
+            - containerPort: 5002
+          env:
+            - name: PORT
+              value: "5002"
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_URL
+              value: "postgresql://postgres:postgres@db:5432/loop_hack_db"
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: gemini-api-key
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: google-api-key
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-service
+  labels:
+    app: rag-service
+spec:
+  ports:
+    - port: 5002
+      targetPort: 5002
+  selector:
+    app: rag-service
+  type: ClusterIP

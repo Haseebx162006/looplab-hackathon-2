@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: skillforge-backend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: PORT
+              value: "5000"
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              value: "db"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "loop_hack_db"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DATABASE_URL
+              value: "postgresql://postgres:postgres@db:5432/loop_hack_db"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: jwt-secret
+            - name: JWT_EXPIRES_IN
+              value: "24h"
+            - name: RAG_SERVICE_URL
+              value: "http://rag-service:5002"
+            - name: AGENT_SERVICE_URL
+              value: "http://agent-service:8000"
+            # Optional secrets for external services
+            - name: GMAIL_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: gmail-client-id
+                  optional: true
+            - name: GMAIL_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: gmail-client-secret
+                  optional: true
+            - name: GMAIL_REFRESH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: gmail-refresh-token
+                  optional: true
+            - name: GMAIL_USER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: gmail-user-email
+                  optional: true
+            - name: CLOUDINARY_CLOUD_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: cloudinary-cloud-name
+                  optional: true
+            - name: CLOUDINARY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: cloudinary-api-key
+                  optional: true
+            - name: CLOUDINARY_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: skillforge-secrets
+                  key: cloudinary-api-secret
+                  optional: true
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  ports:
+    - port: 5000
+      targetPort: 5000
+  selector:
+    app: backend
+  type: ClusterIP

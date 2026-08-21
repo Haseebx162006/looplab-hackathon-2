@@ -549,15 +549,6 @@ export default function AdminDashboardPage() {
                             </td>
                             <td className="py-4 capitalize font-semibold">{user.role}</td>
                             <td className="py-4 text-right pr-2 space-x-2 shrink-0 whitespace-nowrap">
-                              {/* Book Meeting */}
-                              <button
-                                onClick={() => openBooking(user)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
-                              >
-                                <Video className="w-3.5 h-3.5" />
-                                <span>Book Meet</span>
-                              </button>
-
                               {/* Block/Unblock toggle */}
                               <button
                                 onClick={() => handleBlockToggle(user)}

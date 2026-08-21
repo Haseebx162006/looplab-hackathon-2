@@ -738,14 +738,14 @@ export default function AdminDashboardPage() {
                         <button
                           onClick={() => handleRespondToBooking("reject")}
                           disabled={isRespondingToBooking}
-                          className="flex items-center justify-center gap-1.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-755 border border-red-200 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                          className="flex items-center justify-center gap-1.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                         >
                           <XCircle className="w-4 h-4" /> Reject Request
                         </button>
                         <button
                           onClick={() => handleRespondToBooking("approve")}
                           disabled={isRespondingToBooking}
-                          className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-650 hover:bg-emerald-750 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                          className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
                         >
                           <CheckCircle className="w-4 h-4" /> Accept Call
                         </button>

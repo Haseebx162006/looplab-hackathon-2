@@ -1036,6 +1036,43 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
+                {/* 1.5 Project Portfolio & Certifications */}
+                <div className="bg-[#FFFFFF] border border-[#D8CBEB]/30 rounded-3xl p-6 shadow-xs relative overflow-hidden flex flex-col gap-4">
+                  <div>
+                    <h3 className="text-xs font-bold font-mono text-[#1E192B] uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                      <Briefcase className="w-4 h-4 text-[#7C3AED]" /> Project Portfolio
+                    </h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {myProfile?.profile?.projects && myProfile.profile.projects.length > 0 ? (
+                        myProfile.profile.projects.map((proj: string, idx: number) => (
+                          <span key={idx} className="px-2.5 py-1 bg-purple-50/60 border border-purple-100/40 text-[#7C3AED] text-[10px] font-bold font-mono rounded-xl">
+                            {proj}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-mono italic">No projects registered. Add some in settings!</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-[#D8CBEB]/10 pt-4">
+                    <h3 className="text-xs font-bold font-mono text-[#1E192B] uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                      <Award className="w-4 h-4 text-emerald-500" /> User Certifications
+                    </h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {myProfile?.profile?.certifications && myProfile.profile.certifications.length > 0 ? (
+                        myProfile.profile.certifications.map((cert: string, idx: number) => (
+                          <span key={idx} className="px-2.5 py-1 bg-emerald-50/50 border border-emerald-100 text-emerald-700 text-[10px] font-bold font-mono rounded-xl">
+                            {cert}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-mono italic">No certifications registered. Add some in settings!</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* 2. Horizontally scrollable calendar */}
                 <div className="bg-[#FFFFFF] border border-[#D8CBEB]/30 rounded-3xl p-5 shadow-xs">
                   <div className="flex justify-between items-center mb-4">

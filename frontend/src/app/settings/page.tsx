@@ -76,6 +76,10 @@ export default function SettingsPage() {
   const [interestsInput, setInterestsInput] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [projectsInput, setProjectsInput] = useState("");
+  const [projects, setProjects] = useState<string[]>([]);
+  const [certsInput, setCertsInput] = useState("");
+  const [certifications, setCertifications] = useState<string[]>([]);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,6 +93,8 @@ export default function SettingsPage() {
       setSkills(p.skills || []);
       setInterests(p.interests || []);
       setAvatarUrl(p.avatar_url || "");
+      setProjects(p.projects || []);
+      setCertifications(p.certifications || []);
     }
   }, [profileData]);
 
@@ -149,6 +155,8 @@ export default function SettingsPage() {
         skills,
         interests,
         avatar_url: avatarUrl || undefined,
+        projects,
+        certifications,
       }).unwrap();
       toast.success("Profile saved successfully!");
     } catch (err: any) {
@@ -483,6 +491,114 @@ export default function SettingsPage() {
                             ))}
                             {interests.length === 0 && (
                               <span className="text-xs text-slate-400 italic py-1">No interests added.</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-full h-px bg-slate-100" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Projects */}
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Plus className="w-5 h-5 text-purple-500" />
+                          <h3 className="text-base font-bold text-slate-800">Projects</h3>
+                        </div>
+
+                        <div className="group">
+                          <div className="flex gap-2 mb-4">
+                            <input
+                              type="text"
+                              value={projectsInput}
+                              onChange={(e) => setProjectsInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  addTag(projectsInput, projects, setProjects, setProjectsInput);
+                                }
+                              }}
+                              placeholder="e.g. Chat App, Portfolio Website..."
+                              className="flex-1 text-sm font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-2xl px-4 py-3 focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-hidden transition-all"
+                            />
+                            <button
+                              onClick={() => addTag(projectsInput, projects, setProjects, setProjectsInput)}
+                              className="px-4 py-3 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-2xl border border-purple-100 flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 min-h-[40px]">
+                            {projects.map((project) => (
+                              <span
+                                key={project}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-purple-200 text-purple-700 text-xs font-bold rounded-xl shadow-xs"
+                              >
+                                {project}
+                                <button
+                                  onClick={() => removeTag(project, projects, setProjects)}
+                                  className="hover:text-red-500 transition-colors cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </span>
+                            ))}
+                            {projects.length === 0 && (
+                              <span className="text-xs text-slate-400 italic py-1">No projects added.</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Certifications */}
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Palette className="w-5 h-5 text-blue-500" />
+                          <h3 className="text-base font-bold text-slate-800">Certifications</h3>
+                        </div>
+
+                        <div className="group">
+                          <div className="flex gap-2 mb-4">
+                            <input
+                              type="text"
+                              value={certsInput}
+                              onChange={(e) => setCertsInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                  e.preventDefault();
+                                  addTag(certsInput, certifications, setCertifications, setCertsInput);
+                                }
+                              }}
+                              placeholder="e.g. AWS Developer, Google AI Certificate..."
+                              className="flex-1 text-sm font-medium text-slate-800 bg-slate-50/50 border border-slate-200 rounded-2xl px-4 py-3 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-hidden transition-all"
+                            />
+                            <button
+                              onClick={() => addTag(certsInput, certifications, setCertifications, setCertsInput)}
+                              className="px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-2xl border border-blue-100 flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 min-h-[40px]">
+                            {certifications.map((cert) => (
+                              <span
+                                key={cert}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 text-blue-700 text-xs font-bold rounded-xl shadow-xs"
+                              >
+                                {cert}
+                                <button
+                                  onClick={() => removeTag(cert, certifications, setCertifications)}
+                                  className="hover:text-red-500 transition-colors cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </span>
+                            ))}
+                            {certifications.length === 0 && (
+                              <span className="text-xs text-slate-400 italic py-1">No certifications added.</span>
                             )}
                           </div>
                         </div>

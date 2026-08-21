@@ -24,6 +24,7 @@ import {
   FileText,
   Brain,
   Video,
+  Award,
   CheckSquare
 } from "lucide-react";
 import { useCompany } from "@/context/CompanyContext";
@@ -79,7 +80,7 @@ export const HoverSidebar: React.FC = () => {
   const { data: userProfile } = useGetMeQuery(undefined, {
     skip: !isAuthenticated,
   });
-  
+
   const { data: myProfile } = useGetMyProfileQuery(undefined, {
     skip: !isAuthenticated,
   });
@@ -125,6 +126,12 @@ export const HoverSidebar: React.FC = () => {
         label: "Call Requests",
         href: "/admin/meetings",
         icon: Video,
+      },
+      {
+        id: "admin-certificates",
+        label: "Issue Certificate",
+        href: "/admin/certificates",
+        icon: Award,
       },
       {
         id: "knowledge-base",
@@ -340,10 +347,10 @@ export const HoverSidebar: React.FC = () => {
                   <span className="text-purple-300 font-bold">{progressPercentage}%</span>
                 </div>
                 <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${progressPercentage}%` }}
-                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" 
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
                   />
                 </div>
               </motion.div>

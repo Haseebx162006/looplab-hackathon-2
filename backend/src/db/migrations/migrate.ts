@@ -422,6 +422,24 @@ export const sqlMigrations = [
       ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
     `,
   },
+  {
+    name: '017_add_projects_and_certifications_to_profiles',
+    sql: `
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS projects TEXT[] DEFAULT '{}';
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS certifications TEXT[] DEFAULT '{}';
+    `,
+  },
+  {
+    name: '018_make_certificates_flexible',
+    sql: `
+      ALTER TABLE certificates ALTER COLUMN roadmap_id DROP NOT NULL;
+      ALTER TABLE certificates ALTER COLUMN module_id DROP NOT NULL;
+      ALTER TABLE certificates ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+      ALTER TABLE certificates ADD COLUMN IF NOT EXISTS message TEXT;
+      ALTER TABLE certificates ADD COLUMN IF NOT EXISTS style VARCHAR(50) DEFAULT 'Classical Gold';
+      ALTER TABLE certificates DROP CONSTRAINT IF EXISTS unique_user_roadmap_certificate;
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool) {

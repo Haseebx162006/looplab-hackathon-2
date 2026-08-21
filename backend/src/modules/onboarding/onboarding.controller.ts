@@ -10,7 +10,7 @@ export class OnboardingController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const { education, skills, interests, career_goal, experience, cv_url, avatar_url } = req.body;
+      const { education, skills, interests, career_goal, experience, cv_url, avatar_url, projects, certifications } = req.body;
 
       const profile = await OnboardingService.upsertProfile(userId, {
         education,
@@ -20,6 +20,8 @@ export class OnboardingController {
         experience,
         cv_url,
         avatar_url,
+        projects,
+        certifications,
       });
 
       res.status(200).json({

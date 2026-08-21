@@ -42,9 +42,9 @@ export class ProgressService {
 
     // 2. Fetch certificates
     const certsRes = await pool.query(
-      `SELECT c.id as certificate_id, c.issued_at, m.name as module_name
+      `SELECT c.id as certificate_id, c.issued_at, COALESCE(c.title, m.name) as module_name, c.message, c.style
        FROM certificates c
-       JOIN modules m ON c.module_id = m.id
+       LEFT JOIN modules m ON c.module_id = m.id
        WHERE c.user_id = $1
        ORDER BY c.issued_at DESC`,
       [userId]

@@ -21,4 +21,21 @@ export class CertificatesController {
       next(error);
     }
   }
+
+  static async issue(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { userIds, title, message, style } = req.body;
+      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ error: 'userIds array is required.' });
+      }
+      if (!title || !message) {
+        return res.status(400).json({ error: 'title and message are required.' });
+      }
+
+      const certs = await CertificatesService.issueCertificate(userIds, title, message, style || 'Classical Gold');
+      res.status(201).json({ message: 'Certificates issued successfully', certificates: certs });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

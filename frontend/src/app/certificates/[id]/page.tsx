@@ -105,58 +105,104 @@ export default function CertificatePage() {
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-4xl bg-white border-[16px] border-double border-purple-900 rounded-[32px] p-6 md:p-16 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[500px]"
+        className={`w-full max-w-4xl rounded-[32px] p-6 md:p-16 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[520px] ${
+          certDetails.style === "Modern Dark"
+            ? "bg-[#0A0713] border-[16px] border-double border-purple-900 text-white"
+            : certDetails.style === "Creative Minimal"
+              ? "bg-[#FAFAFC] border-4 border-slate-200 text-slate-800"
+              : "bg-white border-[16px] border-double border-purple-900 text-slate-900"
+        }`}
       >
         {/* Background watermark icon */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] text-purple-950 pointer-events-none select-none">
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none ${
+          certDetails.style === "Modern Dark"
+            ? "opacity-[0.03] text-purple-400"
+            : "opacity-[0.02] text-purple-950"
+        }`}>
           <GraduationCap className="w-[500px] h-[500px]" />
         </div>
 
         {/* Decorative corner borders */}
-        <div className="absolute top-4 left-4 w-12 h-12 border-t-2 border-l-2 border-purple-300" />
-        <div className="absolute top-4 right-4 w-12 h-12 border-t-2 border-r-2 border-purple-300" />
-        <div className="absolute bottom-4 left-4 w-12 h-12 border-b-2 border-l-2 border-purple-300" />
-        <div className="absolute bottom-4 right-4 w-12 h-12 border-b-2 border-r-2 border-purple-300" />
+        <div className={`absolute top-4 left-4 w-12 h-12 border-t-2 border-l-2 ${
+          certDetails.style === "Modern Dark"
+            ? "border-purple-800"
+            : certDetails.style === "Creative Minimal"
+              ? "border-slate-300"
+              : "border-purple-300"
+        }`} />
+        <div className={`absolute top-4 right-4 w-12 h-12 border-t-2 border-r-2 ${
+          certDetails.style === "Modern Dark"
+            ? "border-purple-800"
+            : certDetails.style === "Creative Minimal"
+              ? "border-slate-300"
+              : "border-purple-300"
+        }`} />
+        <div className={`absolute bottom-4 left-4 w-12 h-12 border-b-2 border-l-2 ${
+          certDetails.style === "Modern Dark"
+            ? "border-purple-800"
+            : certDetails.style === "Creative Minimal"
+              ? "border-slate-300"
+              : "border-purple-300"
+        }`} />
+        <div className={`absolute bottom-4 right-4 w-12 h-12 border-b-2 border-r-2 ${
+          certDetails.style === "Modern Dark"
+            ? "border-purple-800"
+            : certDetails.style === "Creative Minimal"
+              ? "border-slate-300"
+              : "border-purple-300"
+        }`} />
 
         {/* Top Header */}
         <div className="text-center space-y-3 relative">
           <div className="flex justify-center mb-2">
-            <div className="p-3.5 bg-purple-900 text-purple-100 rounded-full shadow-md">
+            <div className={`p-3.5 rounded-full shadow-md ${
+              certDetails.style === "Modern Dark" ? "bg-purple-800 text-white" : "bg-purple-900 text-purple-100"
+            }`}>
               <Award className="w-10 h-10" />
             </div>
           </div>
-          <h2 className="text-xs font-extrabold tracking-[0.2em] font-mono text-purple-950 uppercase">
+          <h2 className={`text-xs font-extrabold tracking-[0.2em] font-mono uppercase ${
+            certDetails.style === "Modern Dark" ? "text-purple-300" : "text-purple-950"
+          }`}>
             Certificate of Accomplishment
           </h2>
-          <div className="h-[1px] w-24 bg-purple-300 mx-auto" />
+          <div className={`h-[1px] w-24 mx-auto ${
+            certDetails.style === "Modern Dark" ? "bg-purple-800" : "bg-purple-300"
+          }`} />
         </div>
 
         {/* Body content */}
         <div className="text-center my-10 space-y-6 relative">
-          <p className="text-xs italic font-serif text-slate-400">
+          <p className="text-xs italic font-serif text-slate-450">
             This is proudly presented to
           </p>
           
-          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight font-serif text-purple-950 underline decoration-purple-300 decoration-wavy underline-offset-8">
+          <h1 className={`text-2xl md:text-4xl font-extrabold tracking-tight font-serif underline decoration-purple-300 decoration-wavy underline-offset-8 ${
+            certDetails.style === "Modern Dark" ? "text-white" : "text-purple-950"
+          }`}>
             {certDetails.student_name}
           </h1>
 
-          <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed font-mono">
-            for successfully completing the personalized learning curriculum and proving competency in the domain of
+          <p className="text-xs text-slate-500 max-w-xl mx-auto leading-relaxed font-mono">
+            {certDetails.message || "for successfully completing the personalized learning curriculum and proving competency in the domain of"}
           </p>
 
-          <h3 className="text-lg md:text-2xl font-black font-mono text-slate-800">
-            {certDetails.module_name}
+          <h3 className={`text-lg md:text-2xl font-black font-mono ${
+            certDetails.style === "Modern Dark" ? "text-purple-350" : "text-slate-800"
+          }`}>
+            {certDetails.title || certDetails.module_name}
           </h3>
         </div>
 
         {/* Footer credentials and signature */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-purple-50 font-mono relative">
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t font-mono relative ${
+          certDetails.style === "Modern Dark" ? "border-purple-900/50" : "border-purple-50"
+        }`}>
           <div className="space-y-1 text-center md:text-left">
             <span className="text-[10px] text-slate-400 uppercase">Verification Details</span>
-            <div className="flex items-center gap-1 justify-center md:justify-start mt-1 text-[11px] text-slate-600 font-semibold">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Cryptographically Verified</span>
+            <div className="flex items-center gap-1 justify-center md:justify-start mt-1 text-[11px] font-semibold">
+              <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span className={certDetails.style === "Modern Dark" ? "text-slate-300" : "text-slate-600"}>Cryptographically Verified</span>
             </div>
             <p className="text-[9px] text-slate-400 break-all select-all font-bold">
               ID: {certDetails.id}
@@ -165,11 +211,13 @@ export default function CertificatePage() {
 
           <div className="text-center md:text-right space-y-1">
             <span className="text-[10px] text-slate-400 uppercase">Date of Issuance</span>
-            <div className="flex items-center gap-1.5 justify-center md:justify-end mt-1 text-[11px] text-slate-600 font-semibold">
-              <Calendar className="w-4 h-4 text-purple-600" />
-              <span>{new Date(certDetails.issued_at).toLocaleDateString(undefined, { dateStyle: "long" })}</span>
+            <div className="flex items-center gap-1.5 justify-center md:justify-end mt-1 text-[11px] font-semibold">
+              <Calendar className="w-4 h-4 text-purple-500" />
+              <span className={certDetails.style === "Modern Dark" ? "text-slate-300" : "text-slate-600"}>
+                {new Date(certDetails.issued_at).toLocaleDateString(undefined, { dateStyle: "long" })}
+              </span>
             </div>
-            <p className="text-[9px] text-purple-400 font-bold">Seekh AI Learning Engine</p>
+            <p className="text-[9px] text-purple-400 font-bold">SkillForge Learning Engine</p>
           </div>
         </div>
       </motion.div>

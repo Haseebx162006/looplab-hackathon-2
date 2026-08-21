@@ -16,6 +16,8 @@ export interface Profile {
   experience: string;
   profile_complete: boolean;
   avatar_url?: string;
+  projects?: string[];
+  certifications?: string[];
 }
 
 export interface TestSession {
@@ -91,12 +93,15 @@ export interface Submission {
 export interface Certificate {
   id: string;
   user_id: string;
-  roadmap_id: string;
-  module_id: string;
+  roadmap_id?: string;
+  module_id?: string;
   issued_at: string;
   student_name: string;
   student_email: string;
-  module_name: string;
+  module_name?: string;
+  title?: string;
+  message?: string;
+  style?: string;
 }
 
 export interface ProgressSummary {
@@ -113,6 +118,8 @@ export interface ProgressSummary {
     certificate_id: string;
     issued_at: string;
     module_name: string;
+    message?: string;
+    style?: string;
   }[];
 }
 
@@ -180,6 +187,14 @@ export const learningApi = createApi({
         body: profileData,
       }),
       invalidatesTags: ["Profile"],
+    }),
+    issueCertificate: builder.mutation<any, { userIds: string[]; title: string; message: string; style: string }>({
+      query: (body) => ({
+        url: "/certificates/issue",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Certificates", "Progress"],
     }),
     generateTest: builder.mutation<TestSession, { module_id: string; difficulty: string }>({
       query: (body) => ({
@@ -442,4 +457,5 @@ export const {
   useGetRagDraftsQuery,
   useGetRagDocumentsQuery,
   useDeleteRagDocumentMutation,
+  useIssueCertificateMutation,
 } = learningApi;

@@ -6,4 +6,6 @@ export interface ProfileInput {
   experience: string;
   cv_url?: string;
   avatar_url?: string;
+  projects?: string[];
+  certifications?: string[];
 }

@@ -40,21 +40,21 @@ export const StudentsChartCard: React.FC = () => {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider leading-tight font-mono">
+          <span className="text-[10px] font-bold text-white uppercase tracking-wider leading-tight font-mono">
             COMPLETED TASKS <br /> & SKILL MASTERY
           </span>
         </div>
-        <span className="text-[11px] text-slate-500 font-normal italic font-mono">
+        <span className="text-[11px] text-white/60 font-normal italic font-mono">
           metrics
         </span>
       </div>
 
       {/* Main Metric Value */}
       <div className="flex items-baseline justify-between mt-1">
-        <span className="text-xl font-extrabold text-slate-900 tracking-tight">
+        <span className="text-xl font-extrabold text-white tracking-tight">
           +2.4 K Tasks
         </span>
-        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-full">
+        <span className="text-[10px] text-emerald-100 font-bold bg-emerald-500/30 border border-emerald-400/30 px-2 py-0.5 rounded-full">
           ↑ 94.8% Approval
         </span>
       </div>

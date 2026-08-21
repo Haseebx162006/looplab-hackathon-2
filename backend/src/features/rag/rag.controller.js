@@ -1,3 +1,5 @@
+import { extractCvText } from '../../modules/cv-analyze/extract-cv-text.js';
+
 const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || 'http://localhost:5002';
 
 async function proxyRequest(req, res, next, path, method = 'GET') {
@@ -46,7 +48,39 @@ async function proxyRequest(req, res, next, path, method = 'GET') {
 }
 
 export async function handleIngest(req, res, next) {
-  await proxyRequest(req, res, next, '/api/rag/ingest', 'POST');
+  try {
+    const { file, text, ...rest } = req.body;
+    let textToIngest = text;
+
+    if (file) {
+      console.log(`[RAG Ingest Debug] file string length: ${file.length}, prefix: "${file.substring(0, 100)}"`);
+      
+      const match = file.match(/^data:.*?;base64,(.+)$/s);
+      const b64 = match ? match[1] : file;
+      const cleanB64 = b64.replace(/ /g, '+').replace(/\s/g, '');
+      
+      if (!cleanB64.startsWith('JVBER')) {
+        res.status(422).json({ error: 'Invalid file format: The file uploaded is not a valid PDF document.' });
+        return;
+      }
+
+      textToIngest = await extractCvText(file);
+      if (!textToIngest || textToIngest.length < 10) {
+        res.status(422).json({ error: 'Could not extract valid text from the uploaded PDF.' });
+        return;
+      }
+    }
+
+    req.body = {
+      ...rest,
+      text: textToIngest,
+    };
+
+    await proxyRequest(req, res, next, '/api/rag/ingest', 'POST');
+  } catch (error) {
+    console.error(`[RAG Ingest Error] Failed to extract PDF text or proxy request:`, error.message);
+    next(error);
+  }
 }
 
 export async function handleQuery(req, res, next) {
@@ -63,4 +97,12 @@ export async function handleDeleteChunk(req, res, next) {
 
 export async function handleListDrafts(req, res, next) {
   await proxyRequest(req, res, next, '/api/rag/drafts', 'GET');
+}
+
+export async function handleListDocuments(req, res, next) {
+  await proxyRequest(req, res, next, '/api/rag/documents', 'GET');
+}
+
+export async function handleDeleteDocument(req, res, next) {
+  await proxyRequest(req, res, next, `/api/rag/documents/${req.params.id}`, 'DELETE');
 }

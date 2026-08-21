@@ -77,4 +77,42 @@ export class RagService {
     const result = await pool.query(query, [mentorId]);
     return result.rows;
   }
+
+  static async listDocuments(mentorId) {
+    const query = `
+      SELECT id, file_name AS "fileName", created_at AS "createdAt"
+      FROM rag_documents
+      WHERE mentor_id = $1
+      ORDER BY created_at DESC;
+    `;
+    const result = await pool.query(query, [mentorId]);
+    return result.rows;
+  }
+
+  static async deleteDocument(id, mentorId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Delete chunks
+      await client.query(
+        'DELETE FROM knowledge_chunks WHERE document_id = $1 AND mentor_id = $2',
+        [id, mentorId]
+      );
+      
+      // Delete document mapping
+      const result = await client.query(
+        'DELETE FROM rag_documents WHERE id = $1 AND mentor_id = $2',
+        [id, mentorId]
+      );
+      
+      await client.query('COMMIT');
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }

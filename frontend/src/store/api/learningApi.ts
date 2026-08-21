@@ -160,7 +160,7 @@ export const learningApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Profile", "Modules", "Tests", "Roadmaps", "Submissions", "Progress", "Certificates", "Bookings"],
+  tagTypes: ["Profile", "Modules", "Tests", "Roadmaps", "Submissions", "Progress", "Certificates", "Bookings", "RagChunks", "RagDrafts", "RagDocuments"],
   endpoints: (builder) => ({
     getModules: builder.query<Module[], void>({
       query: () => "/modules",
@@ -333,6 +333,58 @@ export const learningApi = createApi({
       }),
       invalidatesTags: ["Bookings"],
     }),
+    ingestRagDocument: builder.mutation<any, { text: string; fileName?: string; sourceType?: string; visibility?: string; mentorId?: string; sourceId?: string }>({
+      query: (body) => ({
+        url: "/api/rag/ingest",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["RagChunks" as any, "RagDocuments" as any],
+    }),
+    queryRag: builder.mutation<any, { query: string; mentorId?: string; generateAnswer?: boolean }>({
+      query: (body) => ({
+        url: "/api/rag/query",
+        method: "POST",
+        body,
+      }),
+    }),
+    getRagChunks: builder.query<{ chunks: any[]; count: number }, { mentorId?: string }>({
+      query: ({ mentorId }) => ({
+        url: "/api/rag/chunks",
+        params: mentorId ? { mentorId } : undefined,
+      }),
+      providesTags: ["RagChunks" as any],
+    }),
+    deleteRagChunk: builder.mutation<any, { id: string; mentorId?: string }>({
+      query: ({ id, mentorId }) => ({
+        url: `/api/rag/chunks/${id}`,
+        method: "DELETE",
+        params: mentorId ? { mentorId } : undefined,
+      }),
+      invalidatesTags: ["RagChunks" as any],
+    }),
+    getRagDrafts: builder.query<{ drafts: any[] }, { mentorId?: string }>({
+      query: ({ mentorId }) => ({
+        url: "/api/rag/drafts",
+        params: mentorId ? { mentorId } : undefined,
+      }),
+      providesTags: ["RagDrafts" as any],
+    }),
+    getRagDocuments: builder.query<{ documents: any[] }, { mentorId?: string }>({
+      query: ({ mentorId }) => ({
+        url: "/api/rag/documents",
+        params: mentorId ? { mentorId } : undefined,
+      }),
+      providesTags: ["RagDocuments" as any],
+    }),
+    deleteRagDocument: builder.mutation<any, { id: string; mentorId?: string }>({
+      query: ({ id, mentorId }) => ({
+        url: `/api/rag/documents/${id}`,
+        method: "DELETE",
+        params: mentorId ? { mentorId } : undefined,
+      }),
+      invalidatesTags: ["RagDocuments" as any, "RagChunks" as any],
+    }),
   }),
 });
 
@@ -366,4 +418,11 @@ export const {
   useGetUserBookingRequestsQuery,
   useGetAdminBookingRequestsQuery,
   useRespondToBookingRequestMutation,
+  useIngestRagDocumentMutation,
+  useQueryRagMutation,
+  useGetRagChunksQuery,
+  useDeleteRagChunkMutation,
+  useGetRagDraftsQuery,
+  useGetRagDocumentsQuery,
+  useDeleteRagDocumentMutation,
 } = learningApi;

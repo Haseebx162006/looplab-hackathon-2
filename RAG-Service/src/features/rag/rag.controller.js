@@ -88,3 +88,38 @@ export async function handleListDrafts(req, res, next) {
     next(error);
   }
 }
+
+export async function handleListDocuments(req, res, next) {
+  try {
+    const mentorId = req.query.mentorId;
+    if (!mentorId) {
+      res.status(400).json({ error: 'mentorId is required' });
+      return;
+    }
+    const documents = await RagService.listDocuments(mentorId);
+    res.json({ documents });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function handleDeleteDocument(req, res, next) {
+  try {
+    const { id } = req.params;
+    const mentorId = req.query.mentorId;
+    if (!mentorId) {
+      res.status(400).json({ error: 'mentorId is required' });
+      return;
+    }
+
+    const deleted = await RagService.deleteDocument(id, mentorId);
+    if (!deleted) {
+      res.status(404).json({ error: 'Document not found or unauthorized' });
+      return;
+    }
+
+    res.json({ message: 'Document and its chunks deleted successfully', id });
+  } catch (error) {
+    next(error);
+  }
+}

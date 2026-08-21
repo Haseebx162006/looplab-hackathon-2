@@ -21,7 +21,8 @@ import {
   Calendar,
   Mail,
   GraduationCap,
-  FileText
+  FileText,
+  Brain
 } from "lucide-react";
 import { useCompany } from "@/context/CompanyContext";
 import { useGetMeQuery } from "@/store/api/authApi";
@@ -88,6 +89,13 @@ export const HoverSidebar: React.FC = () => {
           href: "/admin",
           icon: ShieldCheck,
           badge: "ADMIN",
+        },
+        {
+          id: "knowledge-base",
+          label: "Knowledge Base",
+          href: "/admin/knowledge-base",
+          icon: Brain,
+          badge: "RAG",
         },
         {
           id: "settings",

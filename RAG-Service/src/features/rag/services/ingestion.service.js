@@ -24,6 +24,15 @@ export async function ingestDocument({
 
   const embeddings = await embedTexts(rawChunks, apiKey);
 
+  let documentId = null;
+  if (fileName) {
+    documentId = crypto.randomUUID();
+    await pool.query(
+      'INSERT INTO rag_documents (id, mentor_id, file_name) VALUES ($1, $2, $3)',
+      [documentId, mentorId, fileName]
+    );
+  }
+
   const createdChunks = [];
 
   for (let i = 0; i < rawChunks.length; i++) {
@@ -31,19 +40,23 @@ export async function ingestDocument({
     const embedding = embeddings[i];
     const contentHash = crypto.createHash('sha256').update(chunkContent).digest('hex');
     const vecStr = `[${embedding.join(',')}]`;
+    const chunkId = crypto.randomUUID();
+    const createdAt = new Date();
+    const updatedAt = new Date();
 
     const insertQuery = `
       INSERT INTO knowledge_chunks (
-        mentor_id, mentee_id, source_type, source_id,
-        chunk_index, content_hash, content, embedding, visibility
+        id, mentor_id, mentee_id, source_type, source_id,
+        chunk_index, content_hash, content, embedding, visibility, created_at, updated_at, document_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::vector, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::vector, $10, $11, $12, $13)
       RETURNING id, mentor_id AS "mentorId", mentee_id AS "menteeId",
                 source_type AS "sourceType", source_id AS "sourceId",
                 chunk_index AS "chunkIndex", content, visibility, created_at AS "createdAt";
     `;
 
-    const result = await pool.query(insertQuery, [
+    console.log(`[RAG Ingestion Debug] SQL params count: ${[
+      chunkId,
       mentorId,
       menteeId || null,
       sourceType,
@@ -53,6 +66,37 @@ export async function ingestDocument({
       chunkContent,
       vecStr,
       visibility,
+      createdAt,
+      updatedAt,
+    ].length}`, {
+      chunkId,
+      mentorId,
+      menteeId: menteeId || null,
+      sourceType,
+      sourceId: sourceId || null,
+      i,
+      contentHash,
+      chunkContentSnippet: chunkContent.substring(0, 50),
+      vecStrLength: vecStr.length,
+      visibility,
+      createdAt,
+      updatedAt
+    });
+
+    const result = await pool.query(insertQuery, [
+      chunkId,
+      mentorId,
+      menteeId || null,
+      sourceType,
+      sourceId || null,
+      i,
+      contentHash,
+      chunkContent,
+      vecStr,
+      visibility,
+      createdAt,
+      updatedAt,
+      documentId,
     ]);
 
     createdChunks.push(result.rows[0]);

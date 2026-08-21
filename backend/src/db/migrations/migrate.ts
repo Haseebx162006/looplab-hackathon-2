@@ -404,6 +404,18 @@ export const sqlMigrations = [
       ON CONFLICT (name) DO NOTHING;
     `,
   },
+  {
+    name: '015_create_rag_documents_table',
+    sql: `
+      CREATE TABLE IF NOT EXISTS rag_documents (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        mentor_id VARCHAR(255) NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS document_id UUID;
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool) {

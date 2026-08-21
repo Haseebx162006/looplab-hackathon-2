@@ -3,8 +3,8 @@ import { config } from '../../config/env.js';
 export class TestsService {
     static async generateTest(userId, input) {
         const { module_id, difficulty } = input;
-        // 1. Verify if user profile is complete
-        const profileRes = await pool.query('SELECT profile_complete FROM profiles WHERE user_id = $1', [userId]);
+        // 1. Verify if user profile is complete and extract properties
+        const profileRes = await pool.query('SELECT profile_complete, skills, experience FROM profiles WHERE user_id = $1', [userId]);
         const profile = profileRes.rows[0];
         if (!profile || !profile.profile_complete) {
             throw { status: 400, message: 'Profile is incomplete. Please complete your onboarding profile first.' };
@@ -25,7 +25,9 @@ export class TestsService {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     module: moduleItem.name,
-                    difficulty: difficulty
+                    difficulty: difficulty,
+                    skills: profile.skills || [],
+                    experience: profile.experience || null
                 })
             });
             if (!response.ok) {

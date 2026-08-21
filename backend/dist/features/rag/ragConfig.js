@@ -5,7 +5,7 @@ module.exports = {
         batchSize: parseInt(process.env.RAG_EMBEDDING_BATCH_SIZE || '50', 10),
     },
     chunking: {
-        chunkSize: parseInt(process.env.RAG_CHUNK_SIZE || '250', 10),
+        chunkSize: parseInt(process.env.RAG_CHUNK_SIZE || '500', 10),
         overlap: parseInt(process.env.RAG_CHUNK_OVERLAP || '50', 10),
     },
     retrieval: {

@@ -8,6 +8,11 @@ export class RoadmapsService {
         if (!skillSummary) {
             throw { status: 404, message: 'Skill summary not found or does not belong to you.' };
         }
+        // Check if roadmap already exists for this skill summary
+        const existingRoadmapRes = await pool.query('SELECT * FROM roadmaps WHERE skill_summary_id = $1 AND user_id = $2', [skillSummaryId, userId]);
+        if (existingRoadmapRes.rows[0]) {
+            return existingRoadmapRes.rows[0];
+        }
         // 2. Archive any existing active roadmap in progress
         await pool.query("UPDATE roadmaps SET status = 'abandoned' WHERE user_id = $1 AND status = 'in_progress'", [userId]);
         // 3. Fetch module name, profile and test questions/answers

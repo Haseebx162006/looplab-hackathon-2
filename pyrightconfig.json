@@ -1,0 +1,7 @@
+{
+  "venvPath": "Agent-Service",
+  "venv": ".venv",
+  "extraPaths": [
+    "Agent-Service"
+  ]
+}

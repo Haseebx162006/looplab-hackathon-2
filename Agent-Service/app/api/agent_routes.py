@@ -11,14 +11,57 @@ from app.config.llm import call_llm_with_fallback
 router = APIRouter(prefix="/agent", tags=["Agent"])
 logger = logging.getLogger("app")
 
-def run_test_generation(module: str, difficulty: str) -> str:
+def run_test_generation(module: str, difficulty: str, skills: list = None, experience: str = None) -> str:
+    import os
+    import requests
+    
+    # Query RAG Service for course documents matching the module name
+    rag_url = os.getenv("RAG_SERVICE_URL", "http://localhost:5002").rstrip("/")
+    rag_context = ""
+    try:
+        r = requests.post(f"{rag_url}/api/rag/query", json={
+            "query": module,
+            "mentorId": "default_mentor",
+            "generateAnswer": False
+        }, timeout=8.0)
+        if r.ok:
+            data = r.json()
+            chunks = data.get("chunks", [])
+            if chunks:
+                rag_context = "\n\n".join([c.get("content", "") for c in chunks])
+                logger.info(f"Retrieved {len(chunks)} RAG chunks for module: {module}")
+    except Exception as e:
+        logger.error(f"Failed to fetch RAG context inside run_test_generation: {e}")
+
+    rag_instruction = ""
+    if rag_context:
+        rag_instruction = f"""
+        Additionally, the mentor has uploaded official course documents for this domain in the knowledge base.
+        You MUST design questions that align directly with the guidelines and technical contents in these course materials:
+        
+        Mentor Course Materials:
+        {rag_context}
+        """
+
+    skills_instruction = ""
+    if skills:
+        skills_instruction = f"The student has registered the following technical skills: {', '.join(skills)}. Try to frame questions targeting these specific technologies or related foundational concepts."
+
+    experience_instruction = ""
+    if experience:
+        experience_instruction = f"The student has self-rated their experience as '{experience}'. Calibrate the difficulty of the options and conceptual depth to match this level."
+
     prompt = f"""
-    Generate a set of 5 multiple-choice questions for the domain '{module}' with a difficulty level of '{difficulty}'.
+    Generate a set of 5 multiple-choice questions for the domain '{module}' with a base difficulty level of '{difficulty}'.
     
     Each question must contain:
     - question: The question text
     - options: A list of 4 possible answers (strings)
     - correct_answer: The exact correct answer string matching one of the options.
+    
+    {rag_instruction}
+    {skills_instruction}
+    {experience_instruction}
     
     Return ONLY a JSON object matching this structure:
     {{
@@ -143,7 +186,12 @@ def generate_roadmap(payload: GenerateRoadmapRequest):
 @router.post("/generate-test", response_model=TestQuestionsResponse, status_code=status.HTTP_200_OK)
 async def generate_test(payload: GenerateTestRequest):
     try:
-        raw_output = run_test_generation(payload.module, payload.difficulty)
+        raw_output = run_test_generation(
+            payload.module, 
+            payload.difficulty, 
+            payload.skills, 
+            payload.experience
+        )
         parsed_json = parse_and_clean_json(raw_output)
         return TestQuestionsResponse(**parsed_json)
     except HTTPException:

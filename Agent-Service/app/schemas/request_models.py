@@ -27,3 +27,5 @@ class GenerateRoadmapRequest(BaseModel):
 class GenerateTestRequest(BaseModel):
     module: str = Field(..., description="Module/domain name (e.g. AI Engineering)")
     difficulty: str = Field(..., description="Difficulty level (easy, medium, or hard)")
+    skills: List[str] = Field(default_factory=list, description="User's selected skills")
+    experience: str = Field(None, description="User's experience level")

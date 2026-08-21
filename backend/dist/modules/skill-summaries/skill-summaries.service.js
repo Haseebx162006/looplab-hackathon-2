@@ -11,6 +11,11 @@ export class SkillSummariesService {
         if (test.status !== 'completed') {
             throw { status: 400, message: 'Test is not completed yet. Please submit the test before generating a skill summary.' };
         }
+        // Check if summary already exists for this test
+        const existingSummaryRes = await pool.query('SELECT * FROM skill_summaries WHERE test_id = $1 AND user_id = $2', [testId, userId]);
+        if (existingSummaryRes.rows[0]) {
+            return existingSummaryRes.rows[0];
+        }
         // 2. Fetch user and profile
         const userRes = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
         const user = userRes.rows[0];

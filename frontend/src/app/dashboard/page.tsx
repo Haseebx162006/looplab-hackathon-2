@@ -403,6 +403,41 @@ export default function DashboardPage() {
                         </button>
                       </div>
                     </div>
+                  ) : hasCompletedOnboarding ? (
+                    /* Diagnostic complete / View Roadmap card */
+                    <div className="bg-gradient-to-tr from-slate-900 via-indigo-950 to-purple-950 border border-purple-900/40 rounded-3xl p-6 md:p-8 shadow-lg relative overflow-hidden text-white">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                      <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none" />
+                      
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2.5 bg-purple-500/20 border border-purple-400/20 rounded-xl text-purple-300">
+                          <Sparkles className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 text-[10px] font-extrabold font-mono rounded-full border border-purple-400/20 uppercase tracking-wider">
+                          Diagnostic Verified
+                        </span>
+                      </div>
+
+                      <h2 className="text-xl font-bold font-mono text-white leading-tight">
+                        AI Skill Analysis Complete
+                      </h2>
+                      <p className="text-xs text-purple-250/70 font-mono mt-3 leading-relaxed max-w-xl">
+                        Your technical profile and diagnostic assessment answers have been successfully calibrated. We are ready to synthesize your custom learning roadmap using official mentor materials.
+                      </p>
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-8 pt-4 border-t border-purple-900/40">
+                        <div className="text-[11px] font-mono text-purple-300/80 flex items-center gap-1.5">
+                          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                          Onboarding profile calibration complete
+                        </div>
+                        <button
+                          onClick={() => router.push("/roadmaps")}
+                          className="flex items-center justify-center gap-2 px-5 py-3 bg-purple-600 hover:bg-purple-550 active:scale-98 text-white rounded-xl font-mono text-xs font-bold transition-all shadow-md cursor-pointer whitespace-nowrap"
+                        >
+                          View Personalized Roadmap <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     /* Select Course / Generate Assessment */
                     <div className="bg-white border border-purple-100 rounded-3xl p-6 md:p-8 shadow-xs">
@@ -417,9 +452,9 @@ export default function DashboardPage() {
                         <div className="space-y-2">
                           <label className="text-xs font-bold text-slate-600 font-mono">Choose Course Domain</label>
                           <select
-                            value={selectedModuleId}
-                            onChange={(e) => setSelectedModuleId(e.target.value)}
-                            className="w-full p-4 border border-purple-100 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs bg-purple-50/5 cursor-pointer"
+                             value={selectedModuleId}
+                             onChange={(e) => setSelectedModuleId(e.target.value)}
+                             className="w-full p-4 border border-purple-100 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-hidden font-mono text-xs bg-purple-50/5 cursor-pointer"
                           >
                             <option value="">-- Select Module --</option>
                             {modules?.map((m) => (
@@ -441,7 +476,7 @@ export default function DashboardPage() {
                                 className={`p-3 rounded-2xl font-mono text-xs capitalize font-semibold border transition-all cursor-pointer ${
                                   difficulty === level
                                     ? "bg-purple-600 text-white border-purple-600 shadow-xs"
-                                    : "bg-white text-slate-600 border-purple-50 hover:border-purple-200"
+                                    : "bg-white text-slate-655 border-purple-50 hover:border-purple-200"
                                 }`}
                               >
                                 {level}

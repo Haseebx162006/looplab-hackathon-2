@@ -21,7 +21,9 @@ import {
   GraduationCap,
   Link2,
   Plus,
-  ExternalLink
+  ExternalLink,
+  Brain,
+  Network
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import confetti from "canvas-confetti";
@@ -32,7 +34,10 @@ import {
   useGetRoadmapDetailsQuery,
   useAbandonRoadmapMutation,
   useSubmitTaskMutation,
-  useGetTaskSubmissionsQuery
+  useGetTaskSubmissionsQuery,
+  useGetTestHistoryQuery,
+  useGenerateSkillSummaryMutation,
+  useGenerateRoadmapMutation
 } from "@/store/api/learningApi";
 
 function RoadmapContent() {
@@ -58,6 +63,17 @@ function RoadmapContent() {
   const [abandonRoadmap, { isLoading: isAbandoning }] = useAbandonRoadmapMutation();
   const [submitTask, { isLoading: isSubmittingTask }] = useSubmitTaskMutation();
 
+  // Load test history for auto-generation check
+  const { data: testHistory } = useGetTestHistoryQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  const [generateSummary] = useGenerateSkillSummaryMutation();
+  const [generateRoadmap] = useGenerateRoadmapMutation();
+
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState<"analyzing" | "mapping" | "idle">("idle");
+
   // Selected task state for details panel
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [taskSubmissionText, setTaskSubmissionText] = useState("");
@@ -81,6 +97,58 @@ function RoadmapContent() {
       router.push("/onboarding");
     }
   }, [isAuthenticated, hasCompletedOnboarding, router]);
+
+  // Automatic roadmap generation effect
+  useEffect(() => {
+    if (!isAuthenticated || !progress || !testHistory || isAutoGenerating) return;
+
+    // Check if there is an active roadmap
+    const hasActiveRoadmap = progress.roadmaps?.some((r) => r.status === "in_progress");
+    if (hasActiveRoadmap) return;
+
+    // Find the latest completed test
+    const latestCompletedTest = testHistory.history?.find((t) => t.status === "completed");
+    if (!latestCompletedTest) return;
+
+    // Check if a roadmap already exists for this module track (in any status)
+    const roadmapExists = progress.roadmaps?.some(
+      (r) => r.module_name.toLowerCase() === latestCompletedTest.module_name.toLowerCase()
+    );
+    if (roadmapExists) return;
+
+    // Trigger auto-generation pipeline!
+    const runPipeline = async () => {
+      try {
+        setIsAutoGenerating(true);
+        
+        // Step 1: Generate Skill Summary
+        setGenerationStep("analyzing");
+        const summaryRes = await generateSummary({ test_id: latestCompletedTest.id }).unwrap();
+        
+        // Step 2: Generate Roadmap
+        setGenerationStep("mapping");
+        const roadmapRes = await generateRoadmap({ skill_summary_id: summaryRes.summary.id }).unwrap();
+        
+        setGenerationStep("idle");
+        setIsAutoGenerating(false);
+        toast.success("Personalized learning roadmap completed!");
+        
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+        
+        router.push(`/roadmaps?id=${roadmapRes.roadmap.id}`);
+      } catch (err: any) {
+        setGenerationStep("idle");
+        setIsAutoGenerating(false);
+        toast.error(err.data?.message || err.message || "Failed to auto-synthesize roadmap.");
+      }
+    };
+
+    runPipeline();
+  }, [isAuthenticated, progress, testHistory, isAutoGenerating, generateSummary, generateRoadmap, router]);
 
   // If a task is selected, refetch its submissions history
   useEffect(() => {
@@ -166,6 +234,36 @@ function RoadmapContent() {
       toast.error(err.data?.error || err.data?.message || err.message || "Failed to upload submission.");
     }
   };
+
+  if (isAutoGenerating) {
+    return (
+      <div className="min-h-screen bg-[#F5F2FA] flex font-sans">
+        <HoverSidebar />
+        <main className="flex-1 ml-0 md:ml-20 p-10 pt-24 md:pt-10 flex flex-col justify-center items-center">
+          <div className="bg-[#1E192B] border border-white/5 p-8 rounded-3xl text-center space-y-6 max-w-sm w-full mx-4 shadow-2xl relative text-white">
+            {generationStep === "analyzing" && (
+              <>
+                <Brain className="w-12 h-12 text-purple-400 animate-pulse mx-auto" />
+                <div className="space-y-1.5">
+                  <h4 className="text-sm font-bold font-mono">Analyzing skill metrics...</h4>
+                  <p className="text-[10px] text-slate-400 font-mono">Calibrating strengths and weaknesses...</p>
+                </div>
+              </>
+            )}
+            {generationStep === "mapping" && (
+              <>
+                <Network className="w-12 h-12 text-indigo-400 animate-spin mx-auto animate-[spin_3s_linear_infinite]" />
+                <div className="space-y-1.5">
+                  <h4 className="text-sm font-bold font-mono">Plotting learning modules...</h4>
+                  <p className="text-[10px] text-slate-400 font-mono">Assembling personalized tasks with RAG...</p>
+                </div>
+              </>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (isRoadmapLoading) {
     return (

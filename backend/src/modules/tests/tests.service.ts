@@ -6,9 +6,9 @@ export class TestsService {
   static async generateTest(userId: string, input: GenerateTestInput) {
     const { module_id, difficulty } = input;
 
-    // 1. Verify if user profile is complete
+    // 1. Verify if user profile is complete and extract properties
     const profileRes = await pool.query(
-      'SELECT profile_complete FROM profiles WHERE user_id = $1',
+      'SELECT profile_complete, skills, experience FROM profiles WHERE user_id = $1',
       [userId]
     );
     const profile = profileRes.rows[0];
@@ -40,7 +40,9 @@ export class TestsService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           module: moduleItem.name,
-          difficulty: difficulty
+          difficulty: difficulty,
+          skills: profile.skills || [],
+          experience: profile.experience || null
         })
       });
 
